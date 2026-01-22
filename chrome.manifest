@@ -1,1 +1,5 @@
 content     litgap   chrome/content/
+
+# Register modules directory
+resource    litgap   modules/
+
