@@ -113,33 +113,46 @@ var LitGapMain = {
       
       Zotero.debug(`LitGap Main: Found ${recommendations.length} recommendations`);
       
-      // Step 5: Generate report
-      Zotero.debug("\nLitGap Main: Step 4 - Generating report");
-      progressWindow.addLines(["\nGenerating report..."]);
+      // Step 5: Generate reports (Markdown + HTML)
+      Zotero.debug("\nLitGap Main: Step 4 - Generating reports");
+      progressWindow.addLines(["\nGenerating reports..."]);
       
-      const report = LitGap.Reporter.generateReport(
+      const reportMarkdown = LitGap.Reporter.generateReport(
         papers,
         recommendations,
         citationData.stats
       );
       
-      if (!report || report.length === 0) {
-        throw new Error("Failed to generate report");
+      const reportHTML = LitGap.Reporter.generateHTMLReport(
+        papers,
+        recommendations,
+        citationData.stats
+      );
+      
+      if (!reportMarkdown || reportMarkdown.length === 0) {
+        throw new Error("Failed to generate Markdown report");
       }
       
-      Zotero.debug(`LitGap Main: Generated report (${report.length} characters)`);
+      if (!reportHTML || reportHTML.length === 0) {
+        throw new Error("Failed to generate HTML report");
+      }
       
-      // Step 6: Close progress and save report
+      Zotero.debug(`LitGap Main: Generated Markdown report (${reportMarkdown.length} characters)`);
+      Zotero.debug(`LitGap Main: Generated HTML report (${reportHTML.length} characters)`);
+      
+      // Step 6: Close progress and save reports
       progressWindow.close();
       progressWindow = null;
       
-      const saved = await this._saveReport(report, collection.name);
+      const saved = await this._saveReports(reportMarkdown, reportHTML, collection.name);
       
       if (saved) {
         this._showSuccess(
           `Analysis complete! 🎉\n\n` +
           `Found ${recommendations.length} recommended papers.\n\n` +
-          `Report saved successfully.`
+          `Reports saved:\n` +
+          `• Markdown (.md) - for editing\n` +
+          `• HTML (.html) - for viewing with clickable links`
         );
         Zotero.debug("\nLitGap Main: Workflow completed successfully\n");
         return true;
@@ -147,7 +160,7 @@ var LitGapMain = {
         this._showInfo(
           `Analysis complete! 🎉\n\n` +
           `Found ${recommendations.length} recommended papers.\n\n` +
-          `Report not saved (user cancelled).`
+          `Reports not saved (user cancelled).`
         );
         return false;
       }
@@ -212,14 +225,15 @@ var LitGapMain = {
   },
   
   /**
-   * Save report to file with file picker
+   * Save both Markdown and HTML reports
    * 
    * @private
-   * @param {string} reportContent - Markdown report content
+   * @param {string} reportMarkdown - Markdown report content
+   * @param {string} reportHTML - HTML report content
    * @param {string} collectionName - Collection name for default filename
    * @returns {Promise<boolean>} True if saved successfully
    */
-  _saveReport: async function(reportContent, collectionName) {
+  _saveReports: async function(reportMarkdown, reportHTML, collectionName) {
     try {
       // Get the correct window object
       const win = Zotero.getMainWindow();
@@ -227,11 +241,11 @@ var LitGapMain = {
         throw new Error("Cannot get Zotero main window");
       }
       
-      // Create file picker
+      // Create file picker for Markdown file
       const fp = Components.classes["@mozilla.org/filepicker;1"]
         .createInstance(Components.interfaces.nsIFilePicker);
       
-      fp.init(win, "Save LitGap Report", fp.modeSave);
+      fp.init(win, "Save LitGap Report (Markdown)", fp.modeSave);
       fp.appendFilter("Markdown Files", "*.md");
       fp.appendFilters(fp.filterAll);
       
@@ -247,9 +261,23 @@ var LitGapMain = {
       });
       
       if (rv == fp.returnOK || rv == fp.returnReplace) {
-        // Save file
-        await Zotero.File.putContentsAsync(fp.file, reportContent);
-        Zotero.debug(`LitGap Main: Report saved to ${fp.file.path}`);
+        // Get the selected path (without extension)
+        const mdPath = fp.file.path;
+        const basePath = mdPath.replace(/\.md$/, '');
+        
+        // Save Markdown file
+        await Zotero.File.putContentsAsync(fp.file, reportMarkdown);
+        Zotero.debug(`LitGap Main: Markdown report saved to ${mdPath}`);
+        
+        // Save HTML file with same base name
+        const htmlPath = basePath + '.html';
+        const htmlFile = Components.classes["@mozilla.org/file/local;1"]
+          .createInstance(Components.interfaces.nsIFile);
+        htmlFile.initWithPath(htmlPath);
+        
+        await Zotero.File.putContentsAsync(htmlFile, reportHTML);
+        Zotero.debug(`LitGap Main: HTML report saved to ${htmlPath}`);
+        
         return true;
       } else {
         Zotero.debug("LitGap Main: User cancelled file save");
@@ -257,11 +285,11 @@ var LitGapMain = {
       }
       
     } catch (error) {
-      Zotero.debug(`LitGap Main: Error saving report - ${error.message}`);
+      Zotero.debug(`LitGap Main: Error saving reports - ${error.message}`);
       Zotero.logError(error);
       
       this._showError(
-        `Failed to save report: ${error.message}\n\n` +
+        `Failed to save reports: ${error.message}\n\n` +
         `You can try again or check console for details.`
       );
       
