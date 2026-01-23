@@ -2,7 +2,7 @@
  * LitGap - UI Overlay (Zotero 7)
  * Pure JavaScript UI integration with smart sampling
  * 
- * @version 1.2.0
+ * @version 1.4.2
  */
 
 var LitGapOverlay = {
@@ -36,10 +36,27 @@ var LitGapOverlay = {
     
     try {
       const doc = zoteroPane.document;
-      const collectionMenu = doc.getElementById('zotero-collectionmenu');
+      
+      // Try multiple possible menu IDs (Zotero 7 vs 8)
+      let collectionMenu = doc.getElementById('zotero-collectionmenu');
       
       if (!collectionMenu) {
-        Zotero.debug("LitGap Overlay: Collection menu not found");
+        // Try alternative ID for Zotero 8
+        collectionMenu = doc.getElementById('collection-popup');
+      }
+      
+      if (!collectionMenu) {
+        Zotero.debug("LitGap Overlay: Collection menu not found, will try again");
+        // Retry after a longer delay
+        setTimeout(() => this.addMenuItem(), 500);
+        return;
+      }
+      
+      Zotero.debug(`LitGap Overlay: Found collection menu: ${collectionMenu.id}`);
+      
+      // Check if menu items already exist (avoid duplicates)
+      if (doc.getElementById('litgap-analyze')) {
+        Zotero.debug("LitGap Overlay: Menu items already exist");
         return;
       }
       
@@ -54,7 +71,15 @@ var LitGapOverlay = {
       
       collectionMenu.appendChild(this.menuItem);
       
-      Zotero.debug("LitGap Overlay: Menu item added");
+      // Add reset preferences menu item
+      const resetItem = doc.createXULElement('menuitem');
+      resetItem.id = 'litgap-reset-prefs';
+      resetItem.setAttribute('label', 'Reset LitGap Preferences');
+      resetItem.addEventListener('command', () => this.resetPreferences());
+      
+      collectionMenu.appendChild(resetItem);
+      
+      Zotero.debug("LitGap Overlay: Menu items added successfully");
       
     } catch (e) {
       Zotero.debug(`LitGap Overlay: Failed to add menu item - ${e.message}`);
@@ -194,13 +219,33 @@ var LitGapOverlay = {
       
       dialogMessage += `\nContinue?`;
       
-      // Show confirmation
-      const ps = Services.prompt;
-      const confirmed = ps.confirm(
-        null,
-        "LitGap - Find Hidden Papers",
-        dialogMessage
-      );
+      // Check if user wants to skip confirmation for this collection
+      const skipConfirmKey = `extensions.zotero.litgap.skipConfirm.${collection.id}`;
+      const skipConfirm = Zotero.Prefs.get(skipConfirmKey, false);
+      
+      let confirmed = true;
+      
+      if (!skipConfirm) {
+        // Show confirmation with checkbox
+        const ps = Services.prompt;
+        const check = {value: false};
+        
+        confirmed = ps.confirmCheck(
+          null,
+          "LitGap - Find Hidden Papers",
+          dialogMessage,
+          "Don't ask me again for this collection",
+          check
+        );
+        
+        // If user confirmed and checked the box, save preference
+        if (confirmed && check.value) {
+          Zotero.Prefs.set(skipConfirmKey, true);
+          Zotero.debug(`[LitGap Overlay] User chose to skip confirmation for collection ${collection.id}`);
+        }
+      } else {
+        Zotero.debug(`[LitGap Overlay] Skipping confirmation (user preference)`);
+      }
       
       if (!confirmed) {
         Zotero.debug("[LitGap Overlay] User cancelled");
@@ -235,6 +280,48 @@ var LitGapOverlay = {
   },
   
   /**
+   * Reset all user preferences
+   */
+  resetPreferences: function() {
+    try {
+      const ps = Services.prompt;
+      const confirmed = ps.confirm(
+        null,
+        "Reset LitGap Preferences",
+        "This will reset all 'Don't ask me again' choices.\n\nContinue?"
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // Get all preferences
+      const allPrefs = Zotero.Prefs.getAll();
+      let resetCount = 0;
+      
+      // Clear all extensions.zotero.litgap.skipConfirm.* preferences
+      Object.keys(allPrefs).forEach(key => {
+        if (key.startsWith('extensions.zotero.litgap.skipConfirm.')) {
+          Zotero.Prefs.clear(key);
+          resetCount++;
+        }
+      });
+      
+      Zotero.debug(`[LitGap Overlay] Reset ${resetCount} preferences`);
+      
+      ps.alert(
+        null,
+        "LitGap",
+        `Preferences reset successfully!\n\n${resetCount} collection${resetCount !== 1 ? 's' : ''} will show confirmation again.`
+      );
+      
+    } catch (e) {
+      Zotero.debug(`[LitGap Overlay] Error resetting preferences: ${e.message}`);
+      Zotero.logError(e);
+    }
+  },
+  
+  /**
    * Clean up UI elements
    */
   unload: function() {
@@ -248,9 +335,17 @@ var LitGapOverlay = {
       const zoteroPane = Zotero.getActiveZoteroPane();
       if (zoteroPane) {
         const doc = zoteroPane.document;
+        
+        // Remove separator
         const separator = doc.getElementById('litgap-separator');
         if (separator && separator.parentNode) {
           separator.parentNode.removeChild(separator);
+        }
+        
+        // Remove reset preferences item
+        const resetItem = doc.getElementById('litgap-reset-prefs');
+        if (resetItem && resetItem.parentNode) {
+          resetItem.parentNode.removeChild(resetItem);
         }
       }
       

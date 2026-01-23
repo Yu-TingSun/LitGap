@@ -3,11 +3,12 @@
  * Generate Markdown and HTML analysis reports
  * 
  * @module reporter
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * Ported from: generate_report.py
  * 
  * CHANGELOG:
+ * v1.2.0 - Added donation links to Markdown and HTML reports
  * v1.1.0 - Added DOI links, Semantic Scholar links, HTML generation
  * v1.0.0 - Initial implementation
  */
@@ -108,7 +109,7 @@ var Reporter = {
     
     // About section
     html.push('    <section class="about">');
-    html.push('      <h2>📘 About This Report</h2>');
+    html.push('      <h2>📖 About This Report</h2>');
     html.push(this._generateAboutSectionHTML());
     html.push('    </section>');
     
@@ -246,7 +247,7 @@ var Reporter = {
     
     // Recommended Reading
     if (recommendedPapers.length > 0) {
-      sections.push('\n### 📖 Recommended Reading\n');
+      sections.push('\n### 📖 – Recommended Reading\n');
       recommendedPapers.forEach(paper => {
         const rank = recommendations.findIndex(p => p.paperId === paper.paperId) + 1;
         sections.push(this._formatPaper(paper, rank));
@@ -343,15 +344,15 @@ var Reporter = {
     
     if (paper.doi) {
       const doi = paper.doi.trim();
-      lines.push(`- 📄 DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
+      lines.push(`- 📖„ DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
     }
     
     if (paper.paperId) {
-      lines.push(`- 🔍 [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
+      lines.push(`- 📘 [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
     }
     
     const searchQuery = encodeURIComponent(paper.title);
-    lines.push(`- 🔎 [Search on Google Scholar](https://scholar.google.com/scholar?q=${searchQuery})\n`);
+    lines.push(`- 🎯 [Search on Google Scholar](https://scholar.google.com/scholar?q=${searchQuery})\n`);
     
     // Why recommended
     const reasons = this._generateReasons(paper);
@@ -392,15 +393,15 @@ var Reporter = {
     
     if (paper.doi) {
       const doi = paper.doi.trim();
-      html.push(`            <a href="https://doi.org/${encodeURIComponent(doi)}" target="_blank" class="link-btn doi">📄 DOI</a>`);
+      html.push(`            <a href="https://doi.org/${encodeURIComponent(doi)}" target="_blank" class="link-btn doi">ð📖 DOI</a>`);
     }
     
     if (paper.paperId) {
-      html.push(`            <a href="https://www.semanticscholar.org/paper/${paper.paperId}" target="_blank" class="link-btn scholar">🔍 Semantic Scholar</a>`);
+      html.push(`            <a href="https://www.semanticscholar.org/paper/${paper.paperId}" target="_blank" class="link-btn scholar">📘 Semantic Scholar</a>`);
     }
     
     const searchQuery = encodeURIComponent(paper.title);
-    html.push(`            <a href="https://scholar.google.com/scholar?q=${searchQuery}" target="_blank" class="link-btn google">🔎 Google Scholar</a>`);
+    html.push(`            <a href="https://scholar.google.com/scholar?q=${searchQuery}" target="_blank" class="link-btn google">🎯 Google Scholar</a>`);
     
     html.push('          </div>');
     
@@ -479,6 +480,13 @@ var Reporter = {
     lines.push('3. Use Semantic Scholar for additional context and related papers');
     lines.push('4. Focus on papers with highest mention counts (cited by multiple papers)');
     
+    lines.push('\n---\n');
+    lines.push('### 💖 Support This Project\n');
+    lines.push('If LitGap helps your research, consider supporting development:\n');
+    lines.push('- [GitHub Sponsors](https://github.com/sponsors/sunyuting)');
+    lines.push('- [Ko-fi](https://ko-fi.com/sunyuting)\n');
+    lines.push('Your support enables continued development and new features. Thank you! 🙏');
+    
     return lines.join('\n');
   },
   
@@ -512,6 +520,16 @@ var Reporter = {
     html.push('          <li>Use Semantic Scholar for additional context and related papers</li>');
     html.push('          <li>Focus on papers with highest mention counts</li>');
     html.push('        </ol>');
+    html.push('      </div>');
+    
+    html.push('      <div class="support-section">');
+    html.push('        <h3>💖 Support This Project</h3>');
+    html.push('        <p>If LitGap helps your research, consider supporting development:</p>');
+    html.push('        <div class="support-links">');
+    html.push('          <a href="https://github.com/sponsors/sunyuting" target="_blank" class="support-btn github">❤️ GitHub Sponsors</a>');
+    html.push('          <a href="https://ko-fi.com/sunyuting" target="_blank" class="support-btn kofi">☕ Ko-fi</a>');
+    html.push('        </div>');
+    html.push('        <p class="support-note">Your support enables continued development and new features. Thank you! 🙏</p>');
     html.push('      </div>');
     
     return html.join('\n');
@@ -733,6 +751,63 @@ section {
 
 .about-content li {
   margin: 5px 0;
+}
+
+.support-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin: 30px 0;
+  text-align: center;
+}
+
+.support-section h3 {
+  color: white;
+  margin-bottom: 15px;
+}
+
+.support-section p {
+  margin: 10px 0;
+}
+
+.support-links {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.support-btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.support-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.support-btn.github {
+  background: #ffffff;
+  color: #764ba2;
+}
+
+.support-btn.kofi {
+  background: #ffffff;
+  color: #667eea;
+}
+
+.support-note {
+  font-size: 0.9em;
+  opacity: 0.9;
 }
 
 footer {

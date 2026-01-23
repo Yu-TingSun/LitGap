@@ -2,7 +2,7 @@
  * LitGap - Bootstrap with Dynamic Module Loading
  * Plugin lifecycle management for Zotero 7
  * 
- * @version 1.1.0
+ * @version 1.3.1
  */
 
 var LitGap = {
@@ -79,10 +79,10 @@ var LitGap = {
         // Load module into shared scope
         Services.scriptloader.loadSubScript(moduleURI, moduleScope);
         
-        Zotero.debug(`  âœ… ${fileName} loaded`);
+        Zotero.debug(`  Ã¢Å“â€¦ ${fileName} loaded`);
         
       } catch (e) {
-        Zotero.debug(`  âŒ Failed to load ${fileName}: ${e.message}`);
+        Zotero.debug(`  Ã¢ÂÅ’ Failed to load ${fileName}: ${e.message}`);
         throw new Error(`Module loading failed: ${fileName} - ${e.message}`);
       }
     }
@@ -118,6 +118,12 @@ async function startup({ id, version, rootURI }) {
   await Zotero.uiReadyPromise;
   
   Zotero.debug("LitGap: Zotero UI is ready");
+  
+  // Initialize preferences
+  if (!Zotero.Prefs.get('extensions.zotero.litgap.initialized')) {
+    Zotero.Prefs.set('extensions.zotero.litgap.initialized', true);
+    Zotero.debug("LitGap: Preferences initialized");
+  }
   
   // Initialize LitGap
   await LitGap.init({ id, version, rootURI });
