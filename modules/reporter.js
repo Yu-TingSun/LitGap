@@ -90,26 +90,26 @@ var Reporter = {
     
     // Header
     html.push('    <header>');
-    html.push('      <h1>🔬 LitGap Analysis Report</h1>');
+    html.push('      <h1> 🔬 LitGap Analysis Report</h1>');
     html.push(`      <p class="date">Generated: ${dateStr}</p>`);
     html.push('    </header>');
     
     // Library Overview
     html.push('    <section class="library-overview">');
-    html.push('      <h2>📊 Your Library Overview</h2>');
+    html.push('      <h2> 📊 Your Library Overview</h2>');
     html.push(this._generateLibraryStatsHTML(userPapers, citationStats));
     html.push('    </section>');
     
     // Recommendations
     html.push('    <section class="recommendations">');
-    html.push('      <h2>🎯 Recommended Papers (Knowledge Gaps)</h2>');
+    html.push('      <h2> 🎯 Recommended Papers (Knowledge Gaps)</h2>');
     html.push(`      <p class="summary">Found <strong>${recommendations.length}</strong> papers you may have missed.</p>`);
     html.push(this._generateRecommendationsHTML(recommendations));
     html.push('    </section>');
     
     // About section
     html.push('    <section class="about">');
-    html.push('      <h2>📖 About This Report</h2>');
+    html.push('      <h2> 📖 About This Report</h2>');
     html.push(this._generateAboutSectionHTML());
     html.push('    </section>');
     
@@ -247,7 +247,7 @@ var Reporter = {
     
     // Recommended Reading
     if (recommendedPapers.length > 0) {
-      sections.push('\n### 📖 – Recommended Reading\n');
+      sections.push('\n### 📖 Recommended Reading\n');
       recommendedPapers.forEach(paper => {
         const rank = recommendations.findIndex(p => p.paperId === paper.paperId) + 1;
         sections.push(this._formatPaper(paper, rank));
@@ -284,7 +284,7 @@ var Reporter = {
     
     // Priority Reading
     html.push('      <div class="priority-section">');
-    html.push('        <h3>📌 Priority Reading</h3>');
+    html.push('        <h3> 📌 Priority Reading</h3>');
     if (earlyInfluential && !top3Ids.has(earlyInfluential.paperId)) {
       html.push('        <p class="subtitle">Top 3 by score + Early influential work</p>');
     } else {
@@ -301,7 +301,7 @@ var Reporter = {
     // Recommended Reading
     if (recommendedPapers.length > 0) {
       html.push('      <div class="recommended-section">');
-      html.push('        <h3>📖 Recommended Reading</h3>');
+      html.push('        <h3> 📖 Recommended Reading</h3>');
       
       recommendedPapers.forEach(paper => {
         const rank = recommendations.findIndex(p => p.paperId === paper.paperId) + 1;
@@ -344,11 +344,11 @@ var Reporter = {
     
     if (paper.doi) {
       const doi = paper.doi.trim();
-      lines.push(`- 📖„ DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
+      lines.push(`- 📖 DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
     }
     
     if (paper.paperId) {
-      lines.push(`- 📘 [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
+      lines.push(`- 📘 [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
     }
     
     const searchQuery = encodeURIComponent(paper.title);

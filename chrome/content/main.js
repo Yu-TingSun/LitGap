@@ -3,7 +3,7 @@
  * Coordinates Parser â†’ API â†’ Analyzer â†’ Reporter workflow
  * 
  * @module main
- * @version 1.2.2
+ * @version 1.2.3
  */
 
 var LitGapMain = {
@@ -119,27 +119,36 @@ var LitGapMain = {
       Zotero.debug(`LitGap Main: Generated Markdown report (${reportMarkdown.length} characters)`);
       Zotero.debug(`LitGap Main: Generated HTML report (${reportHTML.length} characters)`);
       
-      // Step 6: Show completion notification
-      this._showNotification(
-        "Analysis Complete! 🎉",
-        `Found ${recommendations.length} recommendations!\n\nClick OK to save reports.`,
-        "success"
+      // Step 6: Show completion summary and confirm save
+      const ps = Services.prompt;
+      const confirmed = ps.confirm(
+        null,
+        "LitGap - Analysis Complete! 🎉",
+        `Found ${recommendations.length} recommended papers.\n\n` +
+        `Ready to save reports:\n` +
+        `• Markdown (.md) - for editing\n` +
+        `• HTML (.html) - for viewing with clickable links\n\n` +
+        `Click OK to choose save location.`
       );
       
-      // Step 7: Save reports
+      if (!confirmed) {
+        Zotero.debug("LitGap Main: User cancelled save");
+        this._showInfo(
+          `Analysis complete!\n\n` +
+          `Found ${recommendations.length} recommended papers.\n\n` +
+          `Reports not saved (user cancelled).`
+        );
+        return false;
+      }
+      
+      // Step 7: Save reports (user confirmed)
       const saved = await this._saveReports(reportMarkdown, reportHTML, collection.name);
       
       if (saved) {
         // Increment usage count
         this._incrementUsageCount();
         
-        this._showSuccess(
-          `Reports saved successfully! 🎉\n\n` +
-          `Found ${recommendations.length} recommended papers.\n\n` +
-          `Reports saved:\n` +
-          `• Markdown (.md) - for editing\n` +
-          `• HTML (.html) - for viewing with clickable links`
-        );
+        // No additional notification - save dialog is enough confirmation
         
         // Check if we should show donation prompt
         this._checkDonationPrompt();
@@ -148,9 +157,7 @@ var LitGapMain = {
         return true;
       } else {
         this._showInfo(
-          `Analysis complete! 🎉\n\n` +
-          `Found ${recommendations.length} recommended papers.\n\n` +
-          `Reports not saved (user cancelled).`
+          `Reports not saved (user cancelled file selection).`
         );
         return false;
       }
