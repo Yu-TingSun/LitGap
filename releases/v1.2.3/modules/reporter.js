@@ -483,7 +483,6 @@ var Reporter = {
     lines.push('\n---\n');
     lines.push('### 💖“ Support This Project\n');
     lines.push('If LitGap helps your research, consider supporting development:\n');
-    lines.push('- [GitHub Sponsors](https://github.com/sponsors/Yu-TingSun)');
     lines.push('- [Ko-fi](https://ko-fi.com/yutingsun)\n');
     lines.push('Your support enables continued development and new features. Thank you! 🙏');
     
@@ -526,7 +525,6 @@ var Reporter = {
     html.push('        <h3>💖“ Support This Project</h3>');
     html.push('        <p>If LitGap helps your research, consider supporting development:</p>');
     html.push('        <div class="support-links">');
-    html.push('          <a href="https://github.com/sponsors/Yu-TingSun" target="_blank" class="support-btn github">❤️Â GitHub Sponsors</a>');
     html.push('          <a href="https://ko-fi.com/yutingsun" target="_blank" class="support-btn kofi">☕ Ko-fi</a>');
     html.push('        </div>');
     html.push('        <p class="support-note">Your support enables continued development and new features. Thank you! 🙏</p>');
