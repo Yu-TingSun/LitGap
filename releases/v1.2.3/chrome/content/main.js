@@ -1,6 +1,6 @@
 /**
  * LitGap - Main Orchestrator
- * Coordinates Parser â†’ API â†’ Analyzer â†’ Reporter workflow
+ * Coordinates Parser Ã¢â€ â€™ API Ã¢â€ â€™ Analyzer Ã¢â€ â€™ Reporter workflow
  * 
  * @module main
  * @version 1.2.3
@@ -123,11 +123,11 @@ var LitGapMain = {
       const ps = Services.prompt;
       const confirmed = ps.confirm(
         null,
-        "LitGap - Analysis Complete! 🎉",
+        "LitGap - Analysis Complete! ðŸŽ‰",
         `Found ${recommendations.length} recommended papers.\n\n` +
         `Ready to save reports:\n` +
-        `• Markdown (.md) - for editing\n` +
-        `• HTML (.html) - for viewing with clickable links\n\n` +
+        `â€¢ Markdown (.md) - for editing\n` +
+        `â€¢ HTML (.html) - for viewing with clickable links\n\n` +
         `Click OK to choose save location.`
       );
       
@@ -289,18 +289,18 @@ var LitGapMain = {
     
     const result = ps.confirmEx(
       null,
-      "💖 Support LitGap",
-      "🎉 You've used LitGap 10+ times!\n\n" +
+      "ðŸ’– Support LitGap",
+      "ðŸŽ‰ You've used LitGap 10+ times!\n\n" +
       "Finding it useful? LitGap is free and open source.\n\n" +
       "Your support helps:\n" +
-      "  • Continued development\n" +
-      "  • Educational resources\n" +
-      "  • Research platforms\n\n" +
-      "I will use every donation wisely for education and scientific research. Thank you! 🙏",
+      "  â€¢ Continued development\n" +
+      "  â€¢ Educational resources\n" +
+      "  â€¢ Research platforms\n\n" +
+      "I will use every donation wisely for education and scientific research. Thank you! ðŸ™",
       buttonFlags,
-      "❤️ Support Now",
-      "⏰ Remind Later",
-      "✓ Already Donated",
+      "â¤ï¸ Support Now",
+      "â° Remind Later",
+      "âœ“ Already Donated",
       null,
       {}
     );
@@ -319,7 +319,7 @@ var LitGapMain = {
         Zotero.Prefs.set('extensions.zotero.litgap.donated', true);
         ps.alert(
           null,
-          "Thank You! 🙏",
+          "Thank You! ðŸ™",
           "Thank you for your support!\n\n" +
           "Your contribution helps make research more efficient for everyone."
         );
@@ -335,7 +335,7 @@ var LitGapMain = {
    */
   _openDonationPage: function() {
     try {
-      const url = "https://github.com/sponsors/sunyuting";
+      const url = "https://github.com/sponsors/Yu-TingSun";
       
       const io = Components.classes["@mozilla.org/network/io-service;1"]
         .getService(Components.interfaces.nsIIOService);

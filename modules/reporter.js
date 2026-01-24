@@ -31,17 +31,17 @@ var Reporter = {
     const dateStr = now.toISOString().split('T')[0];
     
     // Header
-    report.push('# ðŸ”¬ LitGap Analysis Report');
+    report.push('# 🔬 LitGap Analysis Report');
     report.push(`**Generated**: ${dateStr}\n`);
     report.push('---\n');
     
     // Library Overview
-    report.push('## ðŸ“Š Your Library Overview\n');
+    report.push('## 📊 Your Library Overview\n');
     report.push(this._generateLibraryStats(userPapers, citationStats));
     report.push('\n---\n');
     
     // Recommendations
-    report.push('## ðŸŽ¯ Recommended Papers (Knowledge Gaps)\n');
+    report.push('## 🎯 Recommended Papers (Knowledge Gaps)\n');
     report.push(`Found **${recommendations.length}** papers you may have missed.\n`);
     report.push(this._generateRecommendations(recommendations));
     
@@ -90,26 +90,26 @@ var Reporter = {
     
     // Header
     html.push('    <header>');
-    html.push('      <h1> ðŸ”¬ LitGap Analysis Report</h1>');
+    html.push('      <h1> 🔬 LitGap Analysis Report</h1>');
     html.push(`      <p class="date">Generated: ${dateStr}</p>`);
     html.push('    </header>');
     
     // Library Overview
     html.push('    <section class="library-overview">');
-    html.push('      <h2> ðŸ“Š Your Library Overview</h2>');
+    html.push('      <h2> 📊 Your Library Overview</h2>');
     html.push(this._generateLibraryStatsHTML(userPapers, citationStats));
     html.push('    </section>');
     
     // Recommendations
     html.push('    <section class="recommendations">');
-    html.push('      <h2> ðŸŽ¯ Recommended Papers (Knowledge Gaps)</h2>');
+    html.push('      <h2> 🎯 Recommended Papers (Knowledge Gaps)</h2>');
     html.push(`      <p class="summary">Found <strong>${recommendations.length}</strong> papers you may have missed.</p>`);
     html.push(this._generateRecommendationsHTML(recommendations));
     html.push('    </section>');
     
     // About section
     html.push('    <section class="about">');
-    html.push('      <h2> ðŸ“– About This Report</h2>');
+    html.push('      <h2> 📖 About This Report</h2>');
     html.push(this._generateAboutSectionHTML());
     html.push('    </section>');
     
@@ -233,7 +233,7 @@ var Reporter = {
     const recommendedPapers = recommendations.filter(p => !priorityIds.has(p.paperId));
     
     // Priority Reading
-    sections.push('### ðŸ“Œ Priority Reading\n');
+    sections.push('### 📌 Priority Reading\n');
     if (earlyInfluential && !top3Ids.has(earlyInfluential.paperId)) {
       sections.push('*Top 3 by score + Early influential work*\n');
     } else {
@@ -247,7 +247,7 @@ var Reporter = {
     
     // Recommended Reading
     if (recommendedPapers.length > 0) {
-      sections.push('\n### ðŸ“– Recommended Reading\n');
+      sections.push('\n### 📖 Recommended Reading\n');
       recommendedPapers.forEach(paper => {
         const rank = recommendations.findIndex(p => p.paperId === paper.paperId) + 1;
         sections.push(this._formatPaper(paper, rank));
@@ -284,7 +284,7 @@ var Reporter = {
     
     // Priority Reading
     html.push('      <div class="priority-section">');
-    html.push('        <h3> ðŸ“Œ Priority Reading</h3>');
+    html.push('        <h3> 📌 Priority Reading</h3>');
     if (earlyInfluential && !top3Ids.has(earlyInfluential.paperId)) {
       html.push('        <p class="subtitle">Top 3 by score + Early influential work</p>');
     } else {
@@ -301,7 +301,7 @@ var Reporter = {
     // Recommended Reading
     if (recommendedPapers.length > 0) {
       html.push('      <div class="recommended-section">');
-      html.push('        <h3> ðŸ“– Recommended Reading</h3>');
+      html.push('        <h3> 📖 Recommended Reading</h3>');
       
       recommendedPapers.forEach(paper => {
         const rank = recommendations.findIndex(p => p.paperId === paper.paperId) + 1;
@@ -330,7 +330,7 @@ var Reporter = {
     
     // Early Influential label
     if (paper.isEarlyInfluential) {
-      lines.push(`ðŸ“š **Early influential work** (${paper.year}, ${paper.citationCount} citations, cited by ${paper.mentioned_count} papers)\n`);
+      lines.push(`📚 **Early influential work** (${paper.year}, ${paper.citationCount} citations, cited by ${paper.mentioned_count} papers)\n`);
     }
     
     // Score and metadata
@@ -344,15 +344,15 @@ var Reporter = {
     
     if (paper.doi) {
       const doi = paper.doi.trim();
-      lines.push(`- ðŸ“– DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
+      lines.push(`- 📖 DOI: [${doi}](https://doi.org/${encodeURIComponent(doi)})`);
     }
     
     if (paper.paperId) {
-      lines.push(`- ðŸ“˜ [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
+      lines.push(`- 📘 [View on Semantic Scholar](https://www.semanticscholar.org/paper/${paper.paperId})`);
     }
     
     const searchQuery = encodeURIComponent(paper.title);
-    lines.push(`- ðŸŽ¯ [Search on Google Scholar](https://scholar.google.com/scholar?q=${searchQuery})\n`);
+    lines.push(`- 🎯 [Search on Google Scholar](https://scholar.google.com/scholar?q=${searchQuery})\n`);
     
     // Why recommended
     const reasons = this._generateReasons(paper);
@@ -376,7 +376,7 @@ var Reporter = {
     html.push(`          <h4>${rank}. ${this._escapeHTML(paper.title)}</h4>`);
     
     if (paper.isEarlyInfluential) {
-      html.push(`          <span class="badge early-influential">ðŸ“š Early influential work</span>`);
+      html.push(`          <span class="badge early-influential">📚 Early influential work</span>`);
     }
     
     html.push(`          <div class="score">Score: ${paper.totalScore.toFixed(1)}/100</div>`);
@@ -393,15 +393,15 @@ var Reporter = {
     
     if (paper.doi) {
       const doi = paper.doi.trim();
-      html.push(`            <a href="https://doi.org/${encodeURIComponent(doi)}" target="_blank" class="link-btn doi">Ã°ðŸ“– DOI</a>`);
+      html.push(`            <a href="https://doi.org/${encodeURIComponent(doi)}" target="_blank" class="link-btn doi">📄 DOI</a>`);
     }
     
     if (paper.paperId) {
-      html.push(`            <a href="https://www.semanticscholar.org/paper/${paper.paperId}" target="_blank" class="link-btn scholar">ðŸ“˜Â Semantic Scholar</a>`);
+      html.push(`            <a href="https://www.semanticscholar.org/paper/${paper.paperId}" target="_blank" class="link-btn scholar">📘🔍 Semantic Scholar</a>`);
     }
     
     const searchQuery = encodeURIComponent(paper.title);
-    html.push(`            <a href="https://scholar.google.com/scholar?q=${searchQuery}" target="_blank" class="link-btn google">ðŸŽ¯ Google Scholar</a>`);
+    html.push(`            <a href="https://scholar.google.com/scholar?q=${searchQuery}" target="_blank" class="link-btn google">🎯 Google Scholar</a>`);
     
     html.push('          </div>');
     
@@ -454,7 +454,7 @@ var Reporter = {
   _generateAboutSection: function() {
     const lines = [];
     
-    lines.push('## ðŸ“˜ About This Report\n');
+    lines.push('## 📘 About This Report\n');
     
     lines.push('### What are "knowledge gaps"?\n');
     lines.push('Papers frequently cited by your library but not in your collection. ');
@@ -465,8 +465,8 @@ var Reporter = {
     lines.push('- **Academic impact**: Total citation count');
     lines.push('- **Recency**: Publication year (recent papers get bonus)\n');
     
-    lines.push('### About ðŸ“š "Early influential work"\n');
-    lines.push('Papers marked with ðŸ“š are among the **earliest in your recommendations** ');
+    lines.push('### About 📚 "Early influential work"\n');
+    lines.push('Papers marked with 📚 are among the **earliest in your recommendations** ');
     lines.push('with significant citations. This label is based on **relative analysis** ');
     lines.push('within your library, not absolute field history.\n');
     
@@ -481,11 +481,11 @@ var Reporter = {
     lines.push('4. Focus on papers with highest mention counts (cited by multiple papers)');
     
     lines.push('\n---\n');
-    lines.push('### ðŸ’– Support This Project\n');
+    lines.push('### 💖“ Support This Project\n');
     lines.push('If LitGap helps your research, consider supporting development:\n');
     lines.push('- [GitHub Sponsors](https://github.com/sponsors/Yu-TingSun)');
     lines.push('- [Ko-fi](https://ko-fi.com/yutingsun)\n');
-    lines.push('Your support enables continued development and new features. Thank you! ðŸ™');
+    lines.push('Your support enables continued development and new features. Thank you! 🙏');
     
     return lines.join('\n');
   },
@@ -509,8 +509,8 @@ var Reporter = {
     html.push('          <li><strong>Recency</strong>: Publication year (recent papers get bonus)</li>');
     html.push('        </ul>');
     
-    html.push('        <h3>About ðŸ“š "Early influential work"</h3>');
-    html.push('        <p>Papers marked with ðŸ“š are among the <strong>earliest in your recommendations</strong> with significant citations. This label is based on <strong>relative analysis</strong> within your library, not absolute field history.</p>');
+    html.push('        <h3>About 📚 "Early influential work"</h3>');
+    html.push('        <p>Papers marked with 📚 are among the <strong>earliest in your recommendations</strong> with significant citations. This label is based on <strong>relative analysis</strong> within your library, not absolute field history.</p>');
     html.push('        <p><strong>Important</strong>: We identify papers that appear important in YOUR research context, but cannot guarantee they are definitively "pioneering" works in the broader field.</p>');
     
     html.push('        <h3>Reading suggestions</h3>');
@@ -523,13 +523,13 @@ var Reporter = {
     html.push('      </div>');
     
     html.push('      <div class="support-section">');
-    html.push('        <h3>ðŸ’– Support This Project</h3>');
+    html.push('        <h3>💖“ Support This Project</h3>');
     html.push('        <p>If LitGap helps your research, consider supporting development:</p>');
     html.push('        <div class="support-links">');
-    html.push('          <a href="https://github.com/sponsors/Yu-TingSun" target="_blank" class="support-btn github">â¤ï¸ GitHub Sponsors</a>');
-    html.push('          <a href="https://ko-fi.com/yutingsun" target="_blank" class="support-btn kofi">â˜• Ko-fi</a>');
+    html.push('          <a href="https://github.com/sponsors/Yu-TingSun" target="_blank" class="support-btn github">❤️Â GitHub Sponsors</a>');
+    html.push('          <a href="https://ko-fi.com/yutingsun" target="_blank" class="support-btn kofi">☕ Ko-fi</a>');
     html.push('        </div>');
-    html.push('        <p class="support-note">Your support enables continued development and new features. Thank you! ðŸ™</p>');
+    html.push('        <p class="support-note">Your support enables continued development and new features. Thank you! 🙏</p>');
     html.push('      </div>');
     
     return html.join('\n');

@@ -1,5 +1,9 @@
 # LitGap - Find Hidden Papers in Your Zotero Library
 
+**Version**: 1.2.3  
+**Status**: Stable ✅
+
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zotero](https://img.shields.io/badge/Zotero-7.0+-red.svg)](https://www.zotero.org/)
 [![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/sunyuting/litgap/releases)
