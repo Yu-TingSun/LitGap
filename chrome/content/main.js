@@ -1,7 +1,6 @@
 /**
  * LitGap - Main Orchestrator
- * Coordinates Parser Ã¢â€ â€™ API Ã¢â€ â€™ Analyzer Ã¢â€ â€™ Reporter workflow
- * 
+* Coordinates Parser -> API -> Analyzer * 
  * @module main
  * @version 1.2.3
  */
@@ -123,11 +122,11 @@ var LitGapMain = {
       const ps = Services.prompt;
       const confirmed = ps.confirm(
         null,
-        "LitGap - Analysis Complete! ðŸŽ‰",
+        "LitGap - Analysis Complete! \uD83C\uDF89",
         `Found ${recommendations.length} recommended papers.\n\n` +
         `Ready to save reports:\n` +
-        `â€¢ Markdown (.md) - for editing\n` +
-        `â€¢ HTML (.html) - for viewing with clickable links\n\n` +
+        `\u2022 Markdown (.md) - for editing\n` +
+        `\u2022 HTML (.html) - for viewing with clickable links\n\n` +
         `Click OK to choose save location.`
       );
       
@@ -289,18 +288,18 @@ var LitGapMain = {
     
     const result = ps.confirmEx(
       null,
-      "ðŸ’– Support LitGap",
-      "ðŸŽ‰ You've used LitGap 10+ times!\n\n" +
+      "\uD83D\uDC96 Support LitGap",
+      "\uD83C\uDF89 You've used LitGap 10+ times!\n\n" +
       "Finding it useful? LitGap is free and open source.\n\n" +
       "Your support helps:\n" +
-      "  â€¢ Continued development\n" +
-      "  â€¢ Educational resources\n" +
-      "  â€¢ Research platforms\n\n" +
-      "I will use every donation wisely for education and scientific research. Thank you! ðŸ™",
+      "  \u2022 Continued development\n" +
+      "  \u2022 Educational resources\n" +
+      "  \u2022 Research platforms\n\n" +
+      "I will use every donation wisely for education and scientific research. Thank you! \uD83D\uDE4F",
       buttonFlags,
-      "â¤ï¸ Support Now",
-      "â° Remind Later",
-      "âœ“ Already Donated",
+      "\u2764\uFE0F Support Now",
+      "\u23F2\uFE0F Remind Later",
+      "\u2714\uFE0F Already Donated",
       null,
       {}
     );
@@ -319,7 +318,7 @@ var LitGapMain = {
         Zotero.Prefs.set('extensions.zotero.litgap.donated', true);
         ps.alert(
           null,
-          "Thank You! ðŸ™",
+          "Thank You! \uD83D\uDE4F",
           "Thank you for your support!\n\n" +
           "Your contribution helps make research more efficient for everyone."
         );

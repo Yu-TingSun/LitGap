@@ -1,0 +1,26 @@
+# ----------------------------------------------------------------              
+# Git Attributes Configuration for Zotero Plugin
+# ----------------------------------------------------------------
+
+# Set default behavior to automatically handle line endings
+* text=auto
+
+# Force JavaScript, JSON, and XML files to use UTF-8 and LF line endings
+# This prevents Emoji corruption and Zotero loading issues
+*.js text eol=lf working-tree-encoding=UTF-8
+*.json text eol=lf working-tree-encoding=UTF-8
+*.xul text eol=lf working-tree-encoding=UTF-8
+*.xhtml text eol=lf working-tree-encoding=UTF-8
+*.html text eol=lf working-tree-encoding=UTF-8
+*.css text eol=lf working-tree-encoding=UTF-8
+
+# Ensure localization files are also handled as UTF-8
+*.properties text eol=lf working-tree-encoding=UTF-8
+
+# Treat images and other binary files as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
