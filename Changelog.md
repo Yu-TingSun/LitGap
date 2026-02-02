@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.4] - 2026-02-02
+
+### Changed
+- Updated donation link from GitHub Sponsors to Ko-fi
+- GitHub Sponsors not yet available in Taiwan
+
+### Technical
+- Modified `main.js` line 344: donation URL updated
+- No functional changes to core features
+
 ## [1.2.3] - 2026-01-23
 
 ### Changed
@@ -52,3 +62,4 @@
 - Fetch citations from Semantic Scholar
 - Analyze knowledge gaps
 - Generate Markdown reports
+

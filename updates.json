@@ -3,8 +3,18 @@
     "litgap@sunyuting.dev": {
       "updates": [
         {
+          "version": "1.2.4", 
+          "update_link": "https://github.com/Yu-TingSun/litgap/releases/download/v1.2.4/LitGap.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0.0",
+              "strict_max_version": "8.*"
+            }
+          }
+        },
+        {
           "version": "1.2.3",
-          "update_link": "https://github.com/sunyuting/litgap/releases/download/v1.2.3/LitGap.xpi",
+          "update_link": "https://github.com/Yu-TingSun/litgap/releases/download/v1.2.3/LitGap.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0.0",
@@ -14,7 +24,7 @@
         },
         {
           "version": "1.2.2",
-          "update_link": "https://github.com/sunyuting/litgap/releases/download/v1.2.2/LitGap.xpi",
+          "update_link": "https://github.com/Yu-TingSun/litgap/releases/download/v1.2.2/LitGap.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0.0",

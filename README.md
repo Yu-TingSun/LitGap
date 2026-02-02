@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zotero](https://img.shields.io/badge/Zotero-7.0+-red.svg)](https://www.zotero.org/)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/sunyuting/litgap/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/Yu-TingSun/litgap/releases)
 
 > A Zotero plugin that finds important papers frequently cited by your library but not yet in your collection.
 
@@ -30,7 +30,7 @@
 
 📷 *Screenshots will be added soon. The plugin is fully functional.*
 
-**Quick Demo**: [Watch a 2-minute walkthrough →](https://github.com/sunyuting/litgap/wiki/Demo) *(Coming soon)*
+**Quick Demo**: [Watch a 2-minute walkthrough →](https://github.com/Yu-TingSun/litgap/wiki/Demo) *(Coming soon)*
 
 </div>
 
@@ -94,7 +94,7 @@ You have 50 papers on DNA repair. LitGap finds:
 ### Steps
 
 1. **Download the plugin**
-   - Go to [Releases](https://github.com/sunyuting/litgap/releases)
+   - Go to [Releases](https://github.com/Yu-TingSun/litgap/releases)
    - Download `LitGap.xpi`
 
 2. **Install in Zotero**
@@ -876,7 +876,7 @@ This tool was developed during PhD research in biophysics to:
 
 Found a bug? Have a suggestion?
 
-1. Check [existing issues](https://github.com/sunyuting/litgap/issues)
+1. Check [existing issues](https://github.com/Yu-TingSun/litgap/issues)
 2. Open a new issue with:
    - Zotero version
    - LitGap version
@@ -907,13 +907,14 @@ Pull requests welcome! Please:
 
 LitGap is **free and open source**. If it helps your research:
 
-### GitHub Sponsors
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-red?logo=github)](https://github.com/sponsors/sunyuting)
+### Support via Ko-fi
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/yutingsun)
 
-**Why sponsor?**
+**Why support?**
 - Supports continued development
 - Enables new features
 - Helps maintain compatibility with Zotero updates
+
 
 ### Other Ways to Help
 - ⭐ **Star this repository**
@@ -942,9 +943,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: [github.com/sunyuting/litgap](https://github.com/sunyuting/litgap)
-- **Issues**: [Report bugs or request features](https://github.com/sunyuting/litgap/issues)
-- **Releases**: [Download latest version](https://github.com/sunyuting/litgap/releases)
+- **GitHub**: [github.com//Yu-TingSun/litgap](https://github.com/Yu-TingSun/litgap)
+- **Issues**: [Report bugs or request features](https://github.com/Yu-TingSun/litgap/issues)
+- **Releases**: [Download latest version](https://github.com/Yu-TingSun/litgap/releases)
 - **Developer**: [Sun Yuting](https://yutingsun.netlify.app/)
 
 ---
@@ -953,7 +954,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **Developer**: Sun Yuting  
 **Website**: [yutingsun.netlify.app](https://yutingsun.netlify.app/)  
-**GitHub**: [@sunyuting](https://github.com/sunyuting)
+**GitHub**: [@Yu-TingSun](https://github.com/Yu-TingSun)
 
 **Questions or feedback?**  
 Open an issue on GitHub or reach out via website contact form.
@@ -980,10 +981,10 @@ Open an issue on GitHub or reach out via website contact form.
 
 ## 📊 Project Stats
 
-![GitHub stars](https://img.shields.io/github/stars/sunyuting/litgap?style=social)
-![GitHub forks](https://img.shields.io/github/forks/sunyuting/litgap?style=social)
-![GitHub issues](https://img.shields.io/github/issues/sunyuting/litgap)
-![GitHub license](https://img.shields.io/github/license/sunyuting/litgap)
+![GitHub stars](https://img.shields.io/github/stars/Yu-TingSun/litgap?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Yu-TingSun/litgap?style=social)
+![GitHub issues](https://img.shields.io/github/issues/Yu-TingSun/litgap)
+![GitHub license](https://img.shields.io/github/license/Yu-TingSun/litgap)
 
 ---
 

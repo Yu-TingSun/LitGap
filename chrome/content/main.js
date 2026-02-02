@@ -334,7 +334,7 @@ var LitGapMain = {
    */
   _openDonationPage: function() {
     try {
-      const url = "https://github.com/sponsors/Yu-TingSun";
+      const url = "https://ko-fi.com/yutingsun";
       
       const io = Components.classes["@mozilla.org/network/io-service;1"]
         .getService(Components.interfaces.nsIIOService);
