@@ -1,0 +1,14 @@
+# .xpiignore
+*.md
+!README.md
+*.git*
+*.DS_Store
+*.backup*
+*.bak*
+updates.json
+PROJECT_INSTRUCTION.md
+QUICK_START.md
+DEVELOPMENT_CHECKLIST.md
+.vscode/
+.idea/
+node_modules/

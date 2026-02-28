@@ -1,0 +1,21 @@
+# .gitignore
+
+# Build artifacts
+*.xpi
+release/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Backups
+*.backup
+*.bak

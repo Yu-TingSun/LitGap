@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "LitGap",
-  "version": "1.2.4",
+  "version": "2.0.0",
   "description": "Find hidden papers in your Zotero library through citation network analysis",
   "author": "Sun Yuting",
   "homepage_url": "https://github.com/Yu-TingSun/litgap",

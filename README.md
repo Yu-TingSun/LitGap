@@ -1,14 +1,13 @@
-# LitGap - Find Hidden Papers in Your Zotero Library
+# LitGap - Discover What You're Missing in Your Research
 
-**Version**: 1.2.3  
+**Version**: 2.0.0  
 **Status**: Stable ✅
-
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zotero](https://img.shields.io/badge/Zotero-7.0+-red.svg)](https://www.zotero.org/)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/Yu-TingSun/litgap/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/Yu-TingSun/litgap/releases)
 
-> A Zotero plugin that finds important papers frequently cited by your library but not yet in your collection.
+> A Zotero plugin that finds the papers you haven't read but should have — then uses AI to map the conceptual gaps in your research knowledge.
 
 [Features](#features) • [Installation](#installation) • [Usage](#usage) • [Best Practices](#best-practices) • [Limitations](#limitations) • [How It Works](#how-it-works) • [Support](#support)
 
@@ -25,8 +24,9 @@
 | 1️⃣ | Right-click any collection → Select "Find Hidden Papers" |
 | 2️⃣ | Review collection stats and confirm analysis |
 | 3️⃣ | Wait 1-3 minutes while LitGap analyzes citation networks |
-| 4️⃣ | Save Markdown + HTML reports with your recommendations |
-| 5️⃣ | Click DOI links to instantly access recommended papers |
+| 4️⃣ | Save Markdown + HTML reports — see what you've been missing |
+| 5️⃣ | Continue to KGM → AI maps your knowledge framework and conceptual gaps |
+| 6️⃣ | Copy AI-suggested questions → explore your gaps with any AI assistant |
 
 📷 *Screenshots will be added soon. The plugin is fully functional.*
 
@@ -38,30 +38,66 @@
 
 ## 🎯 What is LitGap?
 
-LitGap analyzes citation networks to identify **knowledge gaps** - important papers that are:
-- ✅ Frequently cited by papers in your library
-- ✅ High impact in your research field
-- ❌ **Not yet in your collection**
+Most researchers have two blind spots they don't know about:
 
-**Think of it as**: "Papers that appear in multiple bibliographies of what you've already read, but you haven't read them yourself."
+- **Hidden papers**: Important papers that appear repeatedly in the bibliographies of what you've already read — but you haven't read them yourself.
+- **Conceptual gaps**: Whole areas of your field that you've never systematically thought about, because no one told you they existed.
+
+LitGap addresses both in a connected two-step workflow:
+
+**Step 1 — Find Hidden Papers** uses citation network analysis to surface the papers your field keeps citing that aren't in your Zotero library yet. It queries the Semantic Scholar API, scores each candidate by how many of *your* papers cite it, and delivers a ranked list with direct links.
+
+**Step 2 — Knowledge Gap Mapping (KGM)** takes those results further. It sends your library and missing papers to an AI, which first constructs a *Domain Knowledge Framework* — a structured map of how your field is organized — then identifies *Conceptual Gaps*: the areas and questions that your reading hasn't covered, and why they matter. Each gap comes with a ready-to-copy question for any AI assistant.
+
+Together, they answer the question researchers rarely think to ask: **"What don't I know that I don't know?"**
 
 ### Quick Example
 
-You have 50 papers on DNA repair. LitGap finds:
-- Paper A: Cited by 8 of your papers ⭐
-- Paper B: Cited by 5 of your papers ⭐
-- Paper C: Cited by 3 of your papers
+You have 50 papers on DNA repair. Here's what LitGap delivers:
 
-→ **These are paper gaps!**
+**After Step 1 — Find Hidden Papers:**
+- Paper A: Cited by 8 of your papers ⭐ → you've never read it
+- Paper B: Cited by 5 of your papers ⭐ → not in your library
+- Paper C: Cited by 3 of your papers → worth a look
+
+**After Step 2 — KGM Analysis:**
+```
+Domain Knowledge Framework
+├── DNA Damage Recognition (well covered in your library)
+├── Repair Pathway Selection (partially covered)
+└── Chromatin Remodeling During Repair ← GAP DETECTED
+
+Conceptual Gap: Your library lacks papers on how chromatin
+structure influences repair pathway choice.
+
+Missing papers linked to this gap:
+  • Paper A — "Chromatin remodeling at DSB sites" (cited by 8)
+  • Paper B — "Histone modification and repair fidelity" (cited by 5)
+
+Suggested question for your AI assistant:
+  "How does chromatin compaction affect the balance between
+   NHEJ and HR repair pathway selection in mammalian cells?"
+```
+
+→ **Now you know not just *what* you're missing, but *why* it matters.**
 
 ---
 
 ## ✨ Features
 
-### 🔍 Smart Analysis
+### 🔍 Feature 1: Find Hidden Papers
 - Analyzes citation networks via Semantic Scholar API
 - Identifies papers cited by multiple sources in your library
 - Filters by publication year, citation count, and mention frequency
+- Real-time floating progress bar during analysis (non-blocking)
+
+### 🧠 Feature 2: Knowledge Gap Mapping (KGM) — New in v2.0
+- AI-powered conceptual gap analysis using your LitGap results
+- **Domain Knowledge Framework**: AI maps out how your field is structured
+- **Conceptual Gap Analysis**: Identifies what you might be missing and why it matters
+- **Suggested questions**: Copy-ready prompts for further AI-assisted exploration
+- Supports multiple AI providers: Anthropic Claude, OpenAI GPT, Google Gemini, and custom endpoints (DeepSeek, Qwen, Kimi, Ollama)
+- Saves `kgm_*.md` + `kgm_*.html` reports
 
 ### 📊 Intelligent Scoring
 - **Mention frequency** (highest weight): How many of your papers cite it
@@ -198,41 +234,43 @@ Right-click any collection → Should see **"Find Hidden Papers"** option ✓
 ## 🎓 Use Cases
 
 ### For Researchers
-- **Literature review**: Find papers you might have missed
-- **Grant writing**: Identify foundational works
-- **Paper writing**: Complete your bibliography
+- **Literature review**: Find papers you might have missed, then map the conceptual structure of your field
+- **Grant writing**: Identify foundational works and demonstrate comprehensive field knowledge
+- **Paper writing**: Complete your bibliography and understand how your contribution fits the landscape
 
 ### For Students
-- **Thesis preparation**: Build comprehensive references
-- **Field overview**: Understand key papers
-- **Reading list**: Prioritized recommendations
+- **Thesis preparation**: Surface missing references AND understand the knowledge framework of your field
+- **New topic entry**: Start with 10-15 review papers → LitGap + KGM builds your mental map fast
+- **Reading list**: Prioritized recommendations with AI-generated context for why each gap matters
 
 ### For Librarians
-- **Collection development**: Identify important acquisitions
-- **Subject expertise**: Stay current in specific fields
+- **Collection development**: Identify important acquisitions with citation evidence
+- **Subject expertise**: Stay current and understand structural gaps in a field
 
 ---
 
 ## 🔧 How It Works
 
-### 1. Parse Your Library
-```javascript
+### Feature 1: Find Hidden Papers
+
+#### 1. Parse Your Library
+```
 Papers in collection
   → Filter: Academic papers only
   → Extract: DOI, title, authors, year
   → Result: List of papers to analyze
 ```
 
-### 2. Fetch Citation Data
-```javascript
+#### 2. Fetch Citation Data
+```
 For each paper with DOI:
   → Query: Semantic Scholar API
   → Collect: All papers that cite this work
   → Result: Complete citation network
 ```
 
-### 3. Find Knowledge Gaps
-```javascript
+#### 3. Find Knowledge Gaps
+```
 All citations
   → Remove: Papers you already have
   → Filter: Year ≥ 2010, Mentioned ≥ 2 times
@@ -241,13 +279,36 @@ All citations
   → Result: Top 10 recommendations
 ```
 
-### 4. Generate Reports
-```javascript
+#### 4. Generate Reports
+```
 Recommendations
   → Format: Markdown + HTML
   → Add: DOI/Scholar/Google links
   → Style: Professional, responsive design
-  → Save: Two files for different uses
+  → Save: litgap_*.md + litgap_*.html
+```
+
+---
+
+### Feature 2: Knowledge Gap Mapping (KGM)
+
+#### 5. Build Domain Framework (Step A)
+```
+Your library titles + missing papers
+  → Send to AI (Claude / GPT / Gemini / custom)
+  → AI constructs: Domain Knowledge Framework
+  → Output: Structured map of your research field
+```
+
+#### 6. Identify Conceptual Gaps (Step B)
+```
+Framework + missing papers
+  → AI cross-references: what's covered vs. what's absent
+  → Output per gap:
+      • Gap description and why it matters
+      • Missing papers linked to this gap
+      • Copy-ready question for AI-assisted exploration
+  → Save: kgm_*.md + kgm_*.html
 ```
 
 ---

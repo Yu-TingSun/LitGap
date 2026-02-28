@@ -1,30 +1,54 @@
 /**
  * LitGap - Main Orchestrator
-* Coordinates Parser -> API -> Analyzer * 
+ * Coordinates Parser -> API -> Analyzer
+ *
  * @module main
- * @version 1.2.3
+ * @version 2.0.2
+ *
+ * CHANGELOG v2.0.2:
+ *   - Added: After Find Hidden Papers saves successfully, prompt user to
+ *     continue to KGM analysis. Uses confirmEx so user can choose Yes / No.
+ *     KGMMain.run() is guarded with existence check to stay non-fatal.
+ *
+ * CHANGELOG v2.0.1:
+ *   - Fixed: All ProgressUI calls changed from bare `ProgressUI.xxx()` to
+ *     `LitGap.ProgressUI.xxx()`. In Zotero 8, loadSubScript scope-injected
+ *     variables are not accessible via bare `typeof ProgressUI` inside
+ *     function closures — only object property access works reliably.
+ *     Bootstrap.js now sets LitGap.ProgressUI = progressScope.ProgressUI.
+ *
+ * CHANGELOG v2.0.0:
+ *   - Added: ProgressUI.show() at run() entry (Change A)
+ *   - Added: ProgressUI.update() inside fetchCitations progressCallback (Change B)
+ *   - Added: ProgressUI.hide() before all return / catch exit paths (Change C)
+ *   All existing logic is unchanged.
  */
 
 var LitGapMain = {
-  
+
   /**
    * Main workflow: Analyze collection and generate report
-   * 
+   *
    * @param {Zotero.Collection} collection - Zotero collection object
    * @param {Object} papers - Pre-parsed papers from Parser (optional)
    * @returns {Promise<boolean>} Success status
    */
-  run: async function(collection, papers = null) {
+  run: async function(collection, papers = null, options = {}) {
     Zotero.debug("\n" + "=".repeat(60));
     Zotero.debug("LitGap Main: Starting full analysis workflow");
     Zotero.debug("=".repeat(60) + "\n");
-    
+
+    // Change A: Show floating progress panel
+    if (LitGap.ProgressUI) {
+      LitGap.ProgressUI.show('LitGap: Finding Hidden Papers...');
+    }
+
     try {
       // Verify all modules loaded
       if (!this._verifyModules()) {
         throw new Error("Required modules not loaded");
       }
-      
+
       // Step 1: Parse papers (if not already provided)
       if (!papers) {
         Zotero.debug("LitGap Main: Step 1 - Parsing collection");
@@ -32,15 +56,19 @@ var LitGapMain = {
           debug: false
         });
       }
-      
+
       if (!papers || papers.length === 0) {
+        // Change C: hide before early return
+        if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
         this._showError("No papers found in collection");
         return false;
       }
-      
+
       // Check DOI coverage
       const papersWithDOI = papers.filter(p => p.doi && p.doi.trim());
       if (papersWithDOI.length === 0) {
+        // Change C: hide before early return
+        if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
         this._showError(
           "No papers with DOI found.\n\n" +
           "Gap analysis requires DOIs to fetch citation data.\n" +
@@ -48,40 +76,51 @@ var LitGapMain = {
         );
         return false;
       }
-      
+
       Zotero.debug(`LitGap Main: Found ${papers.length} papers (${papersWithDOI.length} with DOI)`);
-      
+
       // Step 2: Fetch citations from Semantic Scholar (background)
       // Note: No notification here - user already confirmed in overlay.js
       Zotero.debug("\nLitGap Main: Step 2 - Fetching citations from Semantic Scholar");
-      
+
+      // Change B: progressCallback now updates floating progress UI
       const citationData = await LitGap.API.fetchCitations(
         papersWithDOI,
         (current, total, title) => {
-          // Log progress to console only (no UI blocking)
+          // Update floating progress UI
+          if (LitGap.ProgressUI) {
+            const percent = Math.round((current / total) * 100);
+            LitGap.ProgressUI.update(
+              `Fetching citations: ${current}/${total}\n${title.substring(0, 45)}...`,
+              percent
+            );
+          }
+          // Keep existing log
           if (current % 5 === 0 || current === total) {
             Zotero.debug(`LitGap: Progress [${current}/${total}] ${title.substring(0, 30)}...`);
           }
         }
       );
-      
+
       if (!citationData || !citationData.all_citations) {
         throw new Error("Failed to fetch citation data");
       }
-      
+
       Zotero.debug(`LitGap Main: Collected ${citationData.stats.unique_citations} unique citations`);
-      
+
       // Step 4: Analyze knowledge gaps
       Zotero.debug("\nLitGap Main: Step 3 - Analyzing knowledge gaps");
-      
+
       const recommendations = LitGap.Analyzer.findGaps(citationData, {
         minYear: 2010,
         topN: 10,
         minMentions: 2
       });
-      
+
       // Check if we have recommendations
       if (!recommendations || recommendations.length === 0) {
+        // Change C: hide before early return
+        if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
         this._showNotification(
           "Analysis Complete",
           "No knowledge gaps found.\n\nYour library is well-covered!",
@@ -89,36 +128,48 @@ var LitGapMain = {
         );
         return false;
       }
-      
+
       Zotero.debug(`LitGap Main: Found ${recommendations.length} recommendations`);
-      
+
       // Step 5: Generate reports (Markdown + HTML)
       Zotero.debug("\nLitGap Main: Step 4 - Generating reports");
-      
+
       const reportMarkdown = LitGap.Reporter.generateReport(
         papers,
         recommendations,
         citationData.stats
       );
-      
+
       const reportHTML = LitGap.Reporter.generateHTMLReport(
         papers,
         recommendations,
         citationData.stats
       );
-      
+
       if (!reportMarkdown || reportMarkdown.length === 0) {
         throw new Error("Failed to generate Markdown report");
       }
-      
+
       if (!reportHTML || reportHTML.length === 0) {
         throw new Error("Failed to generate HTML report");
       }
-      
+
       Zotero.debug(`LitGap Main: Generated Markdown report (${reportMarkdown.length} characters)`);
       Zotero.debug(`LitGap Main: Generated HTML report (${reportHTML.length} characters)`);
-      
+
+      // ── KGM integration hook ──────────────────────────────────────────────
+      // When called from kgmMain with skipSave:true, return data directly
+      // instead of running the save dialog. Normal callers are unaffected.
+      if (options.skipSave) {
+        Zotero.debug("LitGap Main: skipSave=true, returning data for KGM integration");
+        return { success: true, reportMarkdown, reportHTML, recommendations };
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       // Step 6: Show completion summary and confirm save
+      // Change C: hide before showing the save dialog
+      if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
+
       const ps = Services.prompt;
       const confirmed = ps.confirm(
         null,
@@ -129,7 +180,7 @@ var LitGapMain = {
         `\u2022 HTML (.html) - for viewing with clickable links\n\n` +
         `Click OK to choose save location.`
       );
-      
+
       if (!confirmed) {
         Zotero.debug("LitGap Main: User cancelled save");
         this._showInfo(
@@ -139,19 +190,45 @@ var LitGapMain = {
         );
         return false;
       }
-      
+
       // Step 7: Save reports (user confirmed)
       const saved = await this._saveReports(reportMarkdown, reportHTML, collection.name);
-      
+
       if (saved) {
         // Increment usage count
         this._incrementUsageCount();
-        
-        // No additional notification - save dialog is enough confirmation
-        
+
         // Check if we should show donation prompt
         this._checkDonationPrompt();
-        
+
+        // ── KGM continuation prompt (v2.0.2) ─────────────────────────────
+        // Ask user if they want to continue to KGM analysis right now.
+        // Guarded: only shows if KGMMain is loaded; silently skips if not.
+        if (typeof KGMMain !== 'undefined') {
+          const ps = Services.prompt;
+          const continueToKGM = ps.confirm(
+            null,
+            'LitGap \u2014 Continue to KGM?',
+            'Report saved successfully! \u2705\n\n' +
+            'Would you like to continue to\n' +
+            'Knowledge Gap Mapping (KGM) analysis now?\n\n' +
+            '(You can also run it later via right-click \u2192\n' +
+            '"Analyze Knowledge Gaps (KGM)")'
+          );
+
+          if (continueToKGM) {
+            Zotero.debug('[LitGap Main] User chose to continue to KGM');
+            // Fire-and-forget: KGMMain handles its own errors internally
+            KGMMain.run(collection).catch(e => {
+              Zotero.debug(`[LitGap Main] KGMMain.run error: ${e.message}`);
+              Zotero.logError(e);
+            });
+          } else {
+            Zotero.debug('[LitGap Main] User skipped KGM continuation');
+          }
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         Zotero.debug("\nLitGap Main: Workflow completed successfully\n");
         return true;
       } else {
@@ -160,38 +237,41 @@ var LitGapMain = {
         );
         return false;
       }
-      
+
     } catch (error) {
+      // Change C: hide on catch
+      if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
+
       Zotero.debug(`LitGap Main: Error - ${error.message}`);
       Zotero.debug(error.stack);
       Zotero.logError(error);
-      
+
       this._showNotification(
         "Analysis Failed",
         `Error: ${error.message}\n\nCheck console (Help > Debug Output Logging) for details.`,
         "error"
       );
-      
+
       return false;
     }
   },
-  
+
   /**
    * Verify all required modules are loaded
-   * 
+   *
    * @private
    * @returns {boolean} True if all modules loaded
    */
   _verifyModules: function() {
     const required = ['Parser', 'API', 'Analyzer', 'Reporter'];
     const missing = [];
-    
+
     for (const module of required) {
       if (!LitGap[module]) {
         missing.push(module);
       }
     }
-    
+
     if (missing.length > 0) {
       Zotero.debug(`LitGap Main: Missing modules: ${missing.join(', ')}`);
       this._showError(
@@ -200,13 +280,13 @@ var LitGapMain = {
       );
       return false;
     }
-    
+
     return true;
   },
-  
+
   /**
    * Show notification to user (non-blocking)
-   * 
+   *
    * @private
    * @param {string} title - Notification title
    * @param {string} message - Notification message
@@ -216,10 +296,10 @@ var LitGapMain = {
     const ps = Services.prompt;
     ps.alert(null, title, message);
   },
-  
+
   /**
    * Increment usage count
-   * 
+   *
    * @private
    */
   _incrementUsageCount: function() {
@@ -233,10 +313,10 @@ var LitGapMain = {
       // Non-critical error, don't throw
     }
   },
-  
+
   /**
    * Check if we should show donation prompt
-   * 
+   *
    * @private
    */
   _checkDonationPrompt: function() {
@@ -245,12 +325,12 @@ var LitGapMain = {
       const donated = Zotero.Prefs.get('extensions.zotero.litgap.donated', false);
       const remindLater = Zotero.Prefs.get('extensions.zotero.litgap.donationRemindLater', 0);
       const now = Date.now();
-      
+
       // If already marked as donated, don't prompt
       if (donated) {
         return;
       }
-      
+
       // If "remind later" was clicked, check if 30 days have passed
       if (remindLater > 0) {
         const daysSince = (now - remindLater) / (1000 * 60 * 60 * 24);
@@ -258,7 +338,7 @@ var LitGapMain = {
           return; // Not yet 30 days
         }
       }
-      
+
       // Trigger conditions:
       // 1. 10th use
       // 2. Every 10 uses after that
@@ -271,21 +351,21 @@ var LitGapMain = {
       // Non-critical error, don't throw
     }
   },
-  
+
   /**
    * Show donation prompt
-   * 
+   *
    * @private
    */
   _showDonationPrompt: function() {
     const ps = Services.prompt;
-    
+
     // Create dialog with multiple buttons
-    const buttonFlags = 
+    const buttonFlags =
       ps.BUTTON_POS_0 * ps.BUTTON_TITLE_IS_STRING +
       ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING +
       ps.BUTTON_POS_2 * ps.BUTTON_TITLE_IS_STRING;
-    
+
     const result = ps.confirmEx(
       null,
       "\uD83D\uDC96 Support LitGap",
@@ -303,17 +383,17 @@ var LitGapMain = {
       null,
       {}
     );
-    
+
     switch (result) {
       case 0:  // Support Now
         this._openDonationPage();
         break;
-      
+
       case 1:  // Remind Later
         Zotero.Prefs.set('extensions.zotero.litgap.donationRemindLater', Date.now());
         Zotero.debug("LitGap: Donation reminder set for 30 days");
         break;
-      
+
       case 2:  // Already Donated
         Zotero.Prefs.set('extensions.zotero.litgap.donated', true);
         ps.alert(
@@ -326,33 +406,33 @@ var LitGapMain = {
         break;
     }
   },
-  
+
   /**
    * Open donation page in browser
-   * 
+   *
    * @private
    */
   _openDonationPage: function() {
     try {
       const url = "https://ko-fi.com/yutingsun";
-      
+
       const io = Components.classes["@mozilla.org/network/io-service;1"]
         .getService(Components.interfaces.nsIIOService);
       const uri = io.newURI(url, null, null);
-      
+
       const extProtocolSvc = Components.classes["@mozilla.org/uriloader/external-protocol-service;1"]
         .getService(Components.interfaces.nsIExternalProtocolService);
       extProtocolSvc.loadURI(uri);
-      
+
       Zotero.debug("LitGap: Opened donation page");
     } catch (e) {
       Zotero.debug(`LitGap: Failed to open donation page - ${e.message}`);
     }
   },
-  
+
   /**
    * Save both Markdown and HTML reports
-   * 
+   *
    * @private
    * @param {string} reportMarkdown - Markdown report content
    * @param {string} reportHTML - HTML report content
@@ -366,67 +446,67 @@ var LitGapMain = {
       if (!win) {
         throw new Error("Cannot get Zotero main window");
       }
-      
+
       // Create file picker for Markdown file
       const fp = Components.classes["@mozilla.org/filepicker;1"]
         .createInstance(Components.interfaces.nsIFilePicker);
-      
+
       // Zotero 8 compatible init (windowGlobalChild, title, mode)
       fp.init(win.browsingContext, "Save LitGap Report (Markdown)", fp.modeSave);
       fp.appendFilter("Markdown Files", "*.md");
       fp.appendFilters(fp.filterAll);
-      
+
       // Generate default filename
       const safeName = collectionName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const dateStr = new Date().toISOString().split('T')[0];
       fp.defaultString = `litgap_${safeName}_${dateStr}.md`;
       fp.defaultExtension = "md";
-      
+
       // Show dialog
       const rv = await new Promise(resolve => {
         fp.open(result => resolve(result));
       });
-      
+
       if (rv == fp.returnOK || rv == fp.returnReplace) {
         // Get the selected path (without extension)
         const mdPath = fp.file.path;
         const basePath = mdPath.replace(/\.md$/, '');
-        
+
         // Save Markdown file
         await Zotero.File.putContentsAsync(fp.file, reportMarkdown);
         Zotero.debug(`LitGap Main: Markdown report saved to ${mdPath}`);
-        
+
         // Save HTML file with same base name
         const htmlPath = basePath + '.html';
         const htmlFile = Components.classes["@mozilla.org/file/local;1"]
           .createInstance(Components.interfaces.nsIFile);
         htmlFile.initWithPath(htmlPath);
-        
+
         await Zotero.File.putContentsAsync(htmlFile, reportHTML);
         Zotero.debug(`LitGap Main: HTML report saved to ${htmlPath}`);
-        
+
         return true;
       } else {
         Zotero.debug("LitGap Main: User cancelled file save");
         return false;
       }
-      
+
     } catch (error) {
       Zotero.debug(`LitGap Main: Error saving reports - ${error.message}`);
       Zotero.logError(error);
-      
+
       this._showError(
         `Failed to save reports: ${error.message}\n\n` +
         `You can try again or check console for details.`
       );
-      
+
       return false;
     }
   },
-  
+
   /**
    * Show error dialog
-   * 
+   *
    * @private
    * @param {string} message - Error message
    */
@@ -434,10 +514,10 @@ var LitGapMain = {
     const ps = Services.prompt;
     ps.alert(null, "LitGap Error", message);
   },
-  
+
   /**
    * Show info dialog
-   * 
+   *
    * @private
    * @param {string} message - Info message
    */
@@ -445,10 +525,10 @@ var LitGapMain = {
     const ps = Services.prompt;
     ps.alert(null, "LitGap", message);
   },
-  
+
   /**
    * Show success dialog
-   * 
+   *
    * @private
    * @param {string} message - Success message
    */
