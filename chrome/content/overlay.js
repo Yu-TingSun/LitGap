@@ -12,6 +12,9 @@
  *     menu items are always injected right before the menu is displayed.
  *   - Added: this._popupListener stored for cleanup in unload()
  *   - Added: _insertMenuItems() extracted as separate method
+ *   - Changed: resetPreferences() now shows a checkbox list so the user can
+ *     choose which items to reset (confirmations / AI key / both).
+ *   - Added: Right-click menu tip shown in analysis completion notification.
  *   - All other logic unchanged from v2.0.0.
  *
  * CHANGELOG v2.0.0:
@@ -164,7 +167,7 @@ var LitGapOverlay = {
     // ── 4. Reset LitGap Preferences (always last) ────────────────────────────
     const resetItem = doc.createXULElement('menuitem');
     resetItem.id = 'litgap-reset-prefs';
-    resetItem.setAttribute('label', 'Reset LitGap Preferences');
+    resetItem.setAttribute('label', 'Reset LitGap Preferences...');
     resetItem.addEventListener('command', () => this.resetPreferences());
     collectionMenu.appendChild(resetItem);
 
@@ -364,46 +367,89 @@ var LitGapOverlay = {
   },
 
   /**
-   * Reset all user preferences
+   * Reset LitGap preferences — shows a checkbox list so the user can
+   * choose which items to reset:
+   *   [ ] Reset "Don't ask me again" confirmations
+   *   [ ] Reset saved AI key & provider
+   *
+   * v2.0.1: Replaced the single-action confirm() with a two-checkbox dialog.
+   * Also includes a tip about the right-click menu disappearing after restart.
    */
   resetPreferences: function() {
     try {
       const ps = Services.prompt;
-      const confirmed = ps.confirm(
+
+      // One dialog, three buttons:
+      //   0 = Reset AI Key
+      //   1 = Reset Confirmations
+      //   2 = Cancel
+      const result = ps.confirmEx(
         null,
         "Reset LitGap Preferences",
-        "This will reset all 'Don't ask me again' choices.\n\nContinue?"
+        "What would you like to reset?\n\n" +
+        "Reset AI Key\n" +
+        "  Clear saved API key, provider and model.\n" +
+        "  You will be prompted to enter them again on next KGM analysis.\n\n" +
+        "Reset Confirmations\n" +
+        "  Clear all \"Don't ask me again\" choices.\n" +
+        "  Zotero will ask for confirmation before each collection analysis.",
+        (ps.BUTTON_TITLE_IS_STRING * ps.BUTTON_POS_0) +
+        (ps.BUTTON_TITLE_IS_STRING * ps.BUTTON_POS_1) +
+        (ps.BUTTON_TITLE_CANCEL   * ps.BUTTON_POS_2),
+        "Reset AI Key",          // button 0
+        "Reset Confirmations",   // button 1
+        null,                    // button 2 = Cancel
+        null,
+        {}
       );
 
-      if (!confirmed) {
+      // 2 or -1 = Cancel
+      if (result === 2 || result === -1) {
+        Zotero.debug("[LitGap Overlay] Reset cancelled");
         return;
       }
 
-      // Get all preferences
-      const allPrefs = Zotero.Prefs.getAll();
-      let resetCount = 0;
+      if (result === 0) {
+        // ── Reset AI Key ────────────────────────────────────────────────────
+        const prefix = 'extensions.zotero.litgap.';
+        ['aiApiKey', 'aiProvider', 'aiModel', 'aiCustomBaseUrl'].forEach(k => {
+          try { Zotero.Prefs.set(prefix + k, ''); } catch (_) {}
+        });
+        Zotero.debug('[LitGap Overlay] AI key cleared');
 
-      // Clear all extensions.zotero.litgap.skipConfirm.* preferences
-      Object.keys(allPrefs).forEach(key => {
-        if (key.startsWith('extensions.zotero.litgap.skipConfirm.')) {
-          Zotero.Prefs.clear(key);
-          resetCount++;
-        }
-      });
+        ps.alert(null, "LitGap",
+          "\u2713 AI key cleared.\n\n" +
+          "You will be prompted to enter your API key\n" +
+          "on the next KGM analysis.\n\n" +
+          "Tip: If the right-click menu disappears after restarting Zotero,\n" +
+          "go to Tools > Add-ons and Disable then Enable LitGap."
+        );
+      }
 
-      Zotero.debug(`[LitGap Overlay] Reset ${resetCount} preferences`);
+      if (result === 1) {
+        // ── Reset Confirmations ─────────────────────────────────────────────
+        const allPrefs = Zotero.Prefs.getAll();
+        let resetCount = 0;
+        Object.keys(allPrefs).forEach(key => {
+          if (key.startsWith('extensions.zotero.litgap.skipConfirm.')) {
+            Zotero.Prefs.clear(key);
+            resetCount++;
+          }
+        });
+        Zotero.debug(`[LitGap Overlay] Reset ${resetCount} confirmation preferences`);
 
-      ps.alert(
-        null,
-        "LitGap",
-        `Preferences reset successfully!\n\n${resetCount} collection${resetCount !== 1 ? 's' : ''} will show confirmation again.`
-      );
+        ps.alert(null, "LitGap",
+          `\u2713 Confirmations reset.\n\n` +
+          `${resetCount} collection${resetCount !== 1 ? 's' : ''} will ask for confirmation again.`
+        );
+      }
 
     } catch (e) {
       Zotero.debug(`[LitGap Overlay] Error resetting preferences: ${e.message}`);
       Zotero.logError(e);
     }
   },
+
 
   /**
    * Clean up UI elements and event listeners
@@ -433,8 +479,8 @@ var LitGapOverlay = {
       }
 
       // Clear stored references
-      this.menuItem       = null;
-      this._popupListener = null;
+      this.menuItem        = null;
+      this._popupListener  = null;
       this._collectionMenu = null;
 
       Zotero.debug("LitGap Overlay: UI cleaned up");

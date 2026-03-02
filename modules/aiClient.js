@@ -3,7 +3,13 @@
  * Unified client for multiple AI providers (Anthropic, OpenAI, Google, Custom)
  *
  * @module aiClient
- * @version 2.0.0
+ * @version 2.0.1
+ *
+ * CHANGELOG v2.0.1:
+ *   - Fixed: Pref key namespace corrected from 'extensions.litgap.*'
+ *     to 'extensions.zotero.litgap.*' to match Zotero 8 conventions.
+ *     This caused API key to not persist between sessions (always prompted
+ *     on next launch because createFromPrefs() could never find the saved key).
  *
  * Supported Providers:
  *   - anthropic : claude-haiku-4-5-20251001 (default)
@@ -11,7 +17,7 @@
  *   - google    : gemini-1.5-flash (default)
  *   - custom    : OpenAI-compatible endpoint (user-defined)
  *
- * Preference Keys (namespace: extensions.litgap.*)
+ * Preference Keys (namespace: extensions.zotero.litgap.*)
  *   aiProvider       → 'anthropic' | 'openai' | 'google' | 'custom'
  *   aiApiKey         → API key (encrypted, use true flag when storing)
  *   aiModel          → model name override (optional)
@@ -44,6 +50,12 @@ var AIClient = {
 
   MAX_TOKENS: 4096,
 
+  // ─── Preference key prefix ──────────────────────────────────────────────────
+  // v2.0.1: Must use full 'extensions.zotero.litgap.*' namespace for Zotero 8.
+  // Using bare 'extensions.litgap.*' caused keys to not persist across sessions.
+
+  PREF_PREFIX: 'extensions.zotero.litgap.',
+
   // ─── Public API ─────────────────────────────────────────────────────────────
 
   /**
@@ -64,21 +76,21 @@ var AIClient = {
       : (this.DEFAULT_MODELS[provider] || this.DEFAULT_MODELS.openai);
 
     // Capture values in a closure so each instance is independent
-    const self     = this;
-    const _provider       = provider;
-    const _apiKey         = apiKey;
-    const _model          = resolvedModel;
-    const _customBaseUrl  = (customBaseUrl || '').replace(/\/$/, ''); // strip trailing slash
+    const self           = this;
+    const _provider      = provider;
+    const _apiKey        = apiKey;
+    const _model         = resolvedModel;
+    const _customBaseUrl = (customBaseUrl || '').replace(/\/$/, ''); // strip trailing slash
 
     return {
-      provider:       _provider,
-      model:          _model,
-      customBaseUrl:  _customBaseUrl,
+      provider:      _provider,
+      model:         _model,
+      customBaseUrl: _customBaseUrl,
 
       /**
        * Send a prompt to the AI and return the response as a plain string.
        *
-       * @param {string} prompt       - User prompt
+       * @param {string} prompt         - User prompt
        * @param {string} [systemPrompt] - Optional system/context instruction
        * @returns {Promise<string>} AI response text
        */
@@ -106,12 +118,19 @@ var AIClient = {
    */
   createFromPrefs: function() {
     try {
-      const provider      = Zotero.Prefs.get('extensions.litgap.aiProvider', '');
-      const apiKey        = Zotero.Prefs.get('extensions.litgap.aiApiKey', '');
-      const model         = Zotero.Prefs.get('extensions.litgap.aiModel', '');
-      const customBaseUrl = Zotero.Prefs.get('extensions.litgap.aiCustomBaseUrl', '');
+      // v2.0.1: Use full 'extensions.zotero.litgap.*' namespace
+      const provider      = Zotero.Prefs.get(this.PREF_PREFIX + 'aiProvider',      '');
+      const apiKey        = Zotero.Prefs.get(this.PREF_PREFIX + 'aiApiKey',        '');
+      const model         = Zotero.Prefs.get(this.PREF_PREFIX + 'aiModel',         '');
+      const customBaseUrl = Zotero.Prefs.get(this.PREF_PREFIX + 'aiCustomBaseUrl', '');
 
-      if (!provider || !apiKey) return null;
+      Zotero.debug(`AIClient: createFromPrefs read — provider="${provider}" key_len=${apiKey ? apiKey.length : 0}`);
+      if (!provider || !apiKey) {
+        Zotero.debug(`AIClient: No saved credentials (provider="${provider}", key=${apiKey ? 'present' : 'empty'})`);
+        return null;
+      }
+
+      Zotero.debug(`AIClient: Loaded from prefs — provider="${provider}", model="${model || '(default)'}"`);
       return this.create(provider, apiKey, model, customBaseUrl);
     } catch (e) {
       Zotero.debug(`AIClient: Failed to create from prefs - ${e.message}`);
@@ -128,22 +147,28 @@ var AIClient = {
    * @param {string} [customBaseUrl]
    */
   saveToPrefs: function(provider, apiKey, model, customBaseUrl) {
-    Zotero.Prefs.set('extensions.litgap.aiProvider',      provider);
-    Zotero.Prefs.set('extensions.litgap.aiApiKey',        apiKey, true); // encrypted
-    Zotero.Prefs.set('extensions.litgap.aiModel',         model         || '');
-    Zotero.Prefs.set('extensions.litgap.aiCustomBaseUrl', customBaseUrl || '');
+    // v2.0.1: Use full 'extensions.zotero.litgap.*' namespace
+    Zotero.Prefs.set(this.PREF_PREFIX + 'aiProvider',      provider);
+    Zotero.Prefs.set(this.PREF_PREFIX + 'aiApiKey',        apiKey); //  removed encrypted flag
+    Zotero.Prefs.set(this.PREF_PREFIX + 'aiModel',         model         || '');
+    Zotero.Prefs.set(this.PREF_PREFIX + 'aiCustomBaseUrl', customBaseUrl || '');
     Zotero.debug(`AIClient: Preferences saved for provider: ${provider}`);
   },
 
   /**
-   * Clear stored API key (called on INVALID_KEY error).
+   * Clear stored API key and all AI settings.
+   * Called on INVALID_KEY error, or when user resets AI preferences.
    */
   clearApiKey: function() {
     try {
-      Zotero.Prefs.set('extensions.litgap.aiApiKey', '');
-      Zotero.debug('AIClient: API key cleared from preferences');
+      // v2.0.1: Use full 'extensions.zotero.litgap.*' namespace
+      Zotero.Prefs.set(this.PREF_PREFIX + 'aiApiKey',        '');
+      Zotero.Prefs.set(this.PREF_PREFIX + 'aiProvider',      '');
+      Zotero.Prefs.set(this.PREF_PREFIX + 'aiModel',         '');
+      Zotero.Prefs.set(this.PREF_PREFIX + 'aiCustomBaseUrl', '');
+      Zotero.debug('AIClient: All AI preferences cleared');
     } catch (e) {
-      Zotero.debug(`AIClient: Failed to clear API key - ${e.message}`);
+      Zotero.debug(`AIClient: Failed to clear preferences - ${e.message}`);
     }
   },
 
@@ -198,8 +223,8 @@ var AIClient = {
     const response = await this._fetchWithErrorHandling(url, {
       method: 'POST',
       headers: {
-        'Content-Type':    'application/json',
-        'x-api-key':       apiKey,
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
         'anthropic-version': this.ANTHROPIC_VERSION
       },
       body: JSON.stringify(body)
@@ -264,22 +289,22 @@ var AIClient = {
     // prepend system instruction as a user turn if provided.
     if (systemPrompt) {
       contents.push({
-        role: 'user',
+        role:  'user',
         parts: [{ text: systemPrompt }]
       });
       contents.push({
-        role: 'model',
+        role:  'model',
         parts: [{ text: 'Understood. I will follow these instructions.' }]
       });
     }
 
     contents.push({
-      role: 'user',
+      role:  'user',
       parts: [{ text: prompt }]
     });
 
     const body = {
-      contents: contents,
+      contents:         contents,
       generationConfig: {
         maxOutputTokens: this.MAX_TOKENS
       }
