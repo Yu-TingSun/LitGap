@@ -1,72 +1,63 @@
 /**
  * LitGap - KGM Reporter Module
- * Generates Markdown and HTML reports for Knowledge Gap Mapping analysis
+ * Generates Markdown and HTML reports for Conceptual Map and Field Map analysis
  *
  * @module kgmReporter
- * @version 2.0.0
+ * @version 3.1.0
  *
  * Public API:
  *   generate(collectionName, libraryData, missingPapers, framework, gapAnalysis, providerName)
  *     → { markdown, html }
  *
- * Design notes:
- *   - Pure functions, no Zotero API calls, no async
- *   - HTML style matches existing reporter.js colour scheme
- *   - "Suggested question" blocks get special styling + Copy button
- *   - Markdown is rendered to HTML via a lightweight converter (no external lib)
+ *   generateFieldMap(collectionName, fieldMap, providerName)
+ *     → { markdown, html }
+ *     fieldMap: { coreQuestions, nodes, narrative, foundationalPapers, priorityReading }
+ *
+ * CHANGELOG v3.1.0:
+ *   - FIXED: _markdownToHTML ol/ul close bug — closeList() now tracks current list
+ *     type and emits </ol> or </ul> correctly. Previously all lists closed with </ul>.
+ *   - ADDED: Field Map HTML now includes an SVG node relationship graph above the
+ *     node cards. Graph is generated from nodes[].links data by _generateSVGGraph().
+ *     Nodes are laid out in a circle, coloured by status, with labelled edges.
+ *   - ADDED: Field Map HTML and MD now render foundationalPapers section (per node)
+ *     and priorityReading section (top papers to read based on gaps).
+ *   - _renderGapAnalysis: same ol/ul fix applied.
  */
 
 var KGMReporter = {
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
-  /**
-   * Generate both Markdown and HTML KGM reports.
-   *
-   * @param {string}   collectionName  - Zotero collection name
-   * @param {{ allTitles: string[], topAbstracts: Array }} libraryData
-   * @param {Array<{title:string, mentionCount:number}>}   missingPapers
-   * @param {string}   framework       - Step A AI output (Markdown)
-   * @param {string}   gapAnalysis     - Step B AI output (Markdown)
-   * @param {string}   providerName    - Display name e.g. "Anthropic Claude"
-   * @returns {{ markdown: string, html: string }}
-   */
   generate: function(collectionName, libraryData, missingPapers, framework, gapAnalysis, providerName) {
-    Zotero.debug('KGMReporter: Generating reports...');
-
+    Zotero.debug('KGMReporter: Generating Conceptual Map reports...');
     const dateStr  = new Date().toISOString().split('T')[0];
     const provider = providerName || 'AI Assistant';
-
-    const markdown = this._buildMarkdown(
-      collectionName, libraryData, missingPapers,
-      framework, gapAnalysis, provider, dateStr
-    );
-
-    const html = this._buildHTML(
-      collectionName, libraryData, missingPapers,
-      framework, gapAnalysis, provider, dateStr
-    );
-
-    Zotero.debug(`KGMReporter: Markdown ${markdown.length} chars, HTML ${html.length} chars`);
+    const markdown = this._buildMarkdown(collectionName, libraryData, missingPapers, framework, gapAnalysis, provider, dateStr);
+    const html     = this._buildHTML(collectionName, libraryData, missingPapers, framework, gapAnalysis, provider, dateStr);
+    Zotero.debug(`KGMReporter: Conceptual Map — MD ${markdown.length} chars, HTML ${html.length} chars`);
     return { markdown, html };
   },
 
-  // ─── Markdown builder ──────────────────────────────────────────────────────
+  generateFieldMap: function(collectionName, fieldMap, providerName) {
+    Zotero.debug('KGMReporter: Generating Field Map reports...');
+    const dateStr  = new Date().toISOString().split('T')[0];
+    const provider = providerName || 'AI Assistant';
+    const markdown = this._buildFieldMapMarkdown(collectionName, fieldMap, provider, dateStr);
+    const html     = this._buildFieldMapHTML(collectionName, fieldMap, provider, dateStr);
+    Zotero.debug(`KGMReporter: Field Map — MD ${markdown.length} chars, HTML ${html.length} chars`);
+    return { markdown, html };
+  },
 
-  /**
-   * @private
-   */
+  // ─── Conceptual Map: Markdown builder ──────────────────────────────────────
+
   _buildMarkdown: function(collectionName, libraryData, missingPapers, framework, gapAnalysis, provider, dateStr) {
     const lines = [];
-
-    lines.push(`# Knowledge Gap Map: ${collectionName}`);
+    lines.push(`# Conceptual Map: ${collectionName}`);
     lines.push('');
-    lines.push(`**Generated:** ${dateStr} | **Powered by:** KGM + ${provider}`);
+    lines.push(`**Generated:** ${dateStr} | **Powered by:** ${provider}`);
     lines.push('');
     lines.push('---');
     lines.push('');
-
-    // Research context
     lines.push('## Your Research Context');
     lines.push('');
     lines.push(`- **Collection:** ${collectionName}`);
@@ -75,20 +66,14 @@ var KGMReporter = {
     lines.push('');
     lines.push('---');
     lines.push('');
-
-    // Step A output
     lines.push(framework.trim());
     lines.push('');
     lines.push('---');
     lines.push('');
-
-    // Step B output
     lines.push(gapAnalysis.trim());
     lines.push('');
     lines.push('---');
     lines.push('');
-
-    // How to use
     lines.push('## How to Use This Report');
     lines.push('');
     lines.push('1. Read the **Domain Knowledge Framework** to understand how your field is organized');
@@ -99,40 +84,31 @@ var KGMReporter = {
     lines.push('');
     lines.push('---');
     lines.push('');
-    lines.push(`*Generated by LitGap v2.0 KGM on ${dateStr}*`);
-
+    lines.push(`*Generated by LitGap v3.1 Conceptual Map on ${dateStr}*`);
     return lines.join('\n');
   },
 
-  // ─── HTML builder ──────────────────────────────────────────────────────────
+  // ─── Conceptual Map: HTML builder ──────────────────────────────────────────
 
-  /**
-   * @private
-   */
   _buildHTML: function(collectionName, libraryData, missingPapers, framework, gapAnalysis, provider, dateStr) {
     const lines = [];
-
     lines.push('<!DOCTYPE html>');
     lines.push('<html lang="en">');
     lines.push('<head>');
     lines.push('  <meta charset="UTF-8">');
     lines.push('  <meta name="viewport" content="width=device-width, initial-scale=1.0">');
-    lines.push(`  <title>KGM Report: ${this._esc(collectionName)}</title>`);
+    lines.push(`  <title>Conceptual Map: ${this._esc(collectionName)}</title>`);
     lines.push('  <style>');
     lines.push(this._getStyles());
     lines.push('  </style>');
     lines.push('</head>');
     lines.push('<body>');
     lines.push('<div class="container">');
-
-    // Header
     lines.push('<header>');
-    lines.push(`  <h1>🗺️ Knowledge Gap Map</h1>`);
+    lines.push('  <h1>🗺️ Conceptual Map</h1>');
     lines.push(`  <p class="collection-name">${this._esc(collectionName)}</p>`);
-    lines.push(`  <p class="date">Generated: ${dateStr} &nbsp;|&nbsp; Powered by: KGM + ${this._esc(provider)}</p>`);
+    lines.push(`  <p class="date">Generated: ${dateStr} &nbsp;|&nbsp; Powered by: ${this._esc(provider)}</p>`);
     lines.push('</header>');
-
-    // Research context
     lines.push('<section class="context-section">');
     lines.push('  <h2>📚 Your Research Context</h2>');
     lines.push('  <ul class="context-list">');
@@ -141,18 +117,12 @@ var KGMReporter = {
     lines.push(`    <li><strong>Missing papers from LitGap:</strong> ${missingPapers.length} papers</li>`);
     lines.push('  </ul>');
     lines.push('</section>');
-
-    // Framework section (Step A)
     lines.push('<section class="framework-section">');
     lines.push(this._markdownToHTML(framework.trim()));
     lines.push('</section>');
-
-    // Gap analysis section (Step B) — special rendering for "Suggested question"
     lines.push('<section class="gap-section">');
     lines.push(this._renderGapAnalysis(gapAnalysis.trim()));
     lines.push('</section>');
-
-    // How to use
     lines.push('<section class="howto-section">');
     lines.push('  <h2>💡 How to Use This Report</h2>');
     lines.push('  <ol>');
@@ -163,102 +133,648 @@ var KGMReporter = {
     lines.push('    <li>Re-run this analysis after reading new papers for updated gap detection</li>');
     lines.push('  </ol>');
     lines.push('</section>');
-
-    // Footer
     lines.push('<footer>');
-    lines.push(`  <p>Generated by <strong>LitGap v2.0 KGM</strong> on ${dateStr}</p>`);
+    lines.push(`  <p>Generated by <strong>LitGap v3.1 Conceptual Map</strong> on ${dateStr}</p>`);
     lines.push('</footer>');
-
-    lines.push('</div>'); // .container
-
-    // Copy button script
+    lines.push('</div>');
     lines.push('<script>');
     lines.push(this._getCopyScript());
     lines.push('</script>');
-
     lines.push('</body>');
     lines.push('</html>');
-
     return lines.join('\n');
   },
 
-  // ─── Markdown → HTML converter (lightweight, no external lib) ──────────────
+  // ─── Field Map: Markdown builder ───────────────────────────────────────────
+
+  _buildFieldMapMarkdown: function(collectionName, fieldMap, provider, dateStr) {
+    const lines             = [];
+    const nodes             = fieldMap.nodes             || [];
+    const coreQuestions     = fieldMap.coreQuestions     || [];
+    const narrative         = fieldMap.narrative         || '';
+    const foundationalPapers = fieldMap.foundationalPapers || [];
+    const priorityReading   = fieldMap.priorityReading   || [];
+
+    lines.push(`# Field Map: ${collectionName}`);
+    lines.push('');
+    lines.push(`**Generated:** ${dateStr} | **Powered by:** ${provider}`);
+    lines.push('');
+    lines.push('> Source annotations: [User Library] = from your papers | [AI Inferred — verify] = AI training knowledge | [Confirmed] = verified by you');
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+
+    // Core questions
+    lines.push('## Core Research Questions');
+    lines.push('');
+    coreQuestions.forEach((q, i) => lines.push(`${i + 1}. ${q}`));
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+
+    // Narrative
+    if (narrative) {
+      lines.push('## Field Narrative');
+      lines.push('');
+      lines.push(narrative.trim());
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+    }
+
+    // Priority reading
+    if (priorityReading.length > 0) {
+      lines.push('## 📌 Priority Reading');
+      lines.push('');
+      lines.push('*Based on the largest knowledge gaps — read these first.*');
+      lines.push('');
+      priorityReading.forEach((item, i) => {
+        lines.push(`### ${i + 1}. ${item.title || ''}`);
+        lines.push('');
+        if (item.gap) lines.push(`**Addresses:** ${item.gap}`);
+        lines.push('');
+        if (item.rationale) lines.push(item.rationale);
+        lines.push('');
+      });
+      lines.push('---');
+      lines.push('');
+    }
+
+    // Problem nodes
+    lines.push('## Problem Node Map');
+    lines.push('');
+    nodes.forEach((node, idx) => {
+      const statusEmoji = this._statusEmoji(node.status);
+      lines.push(`### ${statusEmoji} ${node.name}`);
+      lines.push('');
+      lines.push(`**Status:** ${node.status || 'Unknown'}`);
+      lines.push('');
+      lines.push(`**Core dispute:** ${node.coreDispute || ''}`);
+      lines.push('');
+
+      if (node.positionA) {
+        lines.push(`**Position A** ${this._sourceLabel(node.positionA.source)}`);
+        lines.push(node.positionA.text || '');
+        lines.push('');
+      }
+      if (node.positionB) {
+        lines.push(`**Position B** ${this._sourceLabel(node.positionB.source)}`);
+        lines.push(node.positionB.text || '');
+        lines.push('');
+      }
+
+      if (node.links && node.links.length > 0) {
+        lines.push('**Node links:**');
+        node.links.forEach(link => {
+          const arrow      = link.type === 'upstream' ? '←' : link.type === 'tension' ? '↔' : '→';
+          const targetNode = nodes.find(n => n.id === link.target);
+          const targetName = targetNode ? targetNode.name : link.target;
+          lines.push(`- ${arrow} **${link.type}** → ${targetName}: ${link.label || ''}`);
+        });
+        lines.push('');
+      }
+
+      if (node.gaps && node.gaps.length > 0) {
+        lines.push('**Gaps:**');
+        node.gaps.forEach(gap => {
+          const tag = gap.type === 'boundary' ? '🔴 Field boundary' : '📚 Library gap';
+          lines.push(`- ${tag}: ${gap.text || ''}`);
+        });
+        lines.push('');
+      }
+
+      if (node.suggestedReading && node.suggestedReading.length > 0) {
+        lines.push('**Suggested reading:**');
+        node.suggestedReading.forEach(t => lines.push(`- ${t}`));
+        lines.push('');
+      }
+
+      // Foundational papers for this node
+      const fp = foundationalPapers.find(f => f.nodeId === node.id);
+      if (fp && fp.papers && fp.papers.length > 0) {
+        lines.push('**Foundational papers:**');
+        fp.papers.forEach(p => {
+          const src = this._sourceLabel(p.source);
+          lines.push(`- **${p.title}** ${src}`);
+          if (p.reason) lines.push(`  ${p.reason}`);
+        });
+        lines.push('');
+      }
+
+      if (idx < nodes.length - 1) { lines.push('---'); lines.push(''); }
+    });
+
+    // Mermaid
+    const mermaid = this._generateMermaid(nodes);
+    if (mermaid) {
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+      lines.push('## Mermaid Diagram');
+      lines.push('');
+      lines.push('```mermaid');
+      lines.push(mermaid);
+      lines.push('```');
+      lines.push('');
+      lines.push('*Copy the Mermaid block above to visualize in Obsidian or any Mermaid-compatible tool.*');
+    }
+
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    lines.push(`*Generated by LitGap v3.1 Field Map on ${dateStr}*`);
+    return lines.join('\n');
+  },
+
+  // ─── Field Map: HTML builder ────────────────────────────────────────────────
+
+  _buildFieldMapHTML: function(collectionName, fieldMap, provider, dateStr) {
+    const lines              = [];
+    const nodes              = fieldMap.nodes              || [];
+    const coreQuestions      = fieldMap.coreQuestions      || [];
+    const narrative          = fieldMap.narrative          || '';
+    const foundationalPapers = fieldMap.foundationalPapers || [];
+    const priorityReading    = fieldMap.priorityReading    || [];
+
+    lines.push('<!DOCTYPE html>');
+    lines.push('<html lang="en">');
+    lines.push('<head>');
+    lines.push('  <meta charset="UTF-8">');
+    lines.push('  <meta name="viewport" content="width=device-width, initial-scale=1.0">');
+    lines.push(`  <title>Field Map: ${this._esc(collectionName)}</title>`);
+    lines.push('  <style>');
+    lines.push(this._getStyles());
+    lines.push(this._getFieldMapStyles());
+    lines.push('  </style>');
+    lines.push('</head>');
+    lines.push('<body>');
+    lines.push('<div class="container">');
+
+    // Header
+    lines.push('<header>');
+    lines.push('  <h1>🗺️ Field Map</h1>');
+    lines.push(`  <p class="collection-name">${this._esc(collectionName)}</p>`);
+    lines.push(`  <p class="date">Generated: ${dateStr} &nbsp;|&nbsp; Powered by: ${this._esc(provider)}</p>`);
+    lines.push('  <p class="source-legend">');
+    lines.push('    <span class="src-tag src-user">User Library</span> from your papers &nbsp;|&nbsp;');
+    lines.push('    <span class="src-tag src-ai">AI Inferred — verify</span> AI training knowledge &nbsp;|&nbsp;');
+    lines.push('    <span class="src-tag src-confirmed">Confirmed</span> verified by you');
+    lines.push('  </p>');
+    lines.push('</header>');
+
+    // Core questions
+    if (coreQuestions.length > 0) {
+      lines.push('<section class="questions-section">');
+      lines.push('  <h2>🔍 Core Research Questions</h2>');
+      lines.push('  <ol class="core-questions">');
+      coreQuestions.forEach(q => lines.push(`    <li>${this._esc(q)}</li>`));
+      lines.push('  </ol>');
+      lines.push('</section>');
+    }
+
+    // Narrative
+    if (narrative) {
+      lines.push('<section class="narrative-section">');
+      lines.push('  <h2>📖 Field Narrative</h2>');
+      narrative.split(/\n\n+/).forEach(para => {
+        const t = para.trim();
+        if (t) lines.push(`  <p>${this._esc(t)}</p>`);
+      });
+      lines.push('</section>');
+    }
+
+    // SVG node graph
+    const svgGraph = this._generateSVGGraph(nodes);
+    if (svgGraph) {
+      lines.push('<section class="graph-section">');
+      lines.push('  <h2>🔗 Node Relationship Graph</h2>');
+      lines.push('  <p class="graph-hint">Node colours: 🟡 Open &nbsp; 🟢 Settled &nbsp; 🔵 Emerging &nbsp; 🔴 Gap. Click a node to jump to its card.</p>');
+      lines.push(svgGraph);
+      lines.push('</section>');
+    }
+
+    // Priority reading
+    if (priorityReading.length > 0) {
+      lines.push('<section class="priority-section">');
+      lines.push('  <h2>📌 Priority Reading</h2>');
+      lines.push('  <p class="priority-hint">Read these first — they address the largest gaps in your library.</p>');
+      priorityReading.forEach((item, i) => {
+        lines.push(`  <div class="priority-item">`);
+        lines.push(`    <div class="priority-rank">${i + 1}</div>`);
+        lines.push(`    <div class="priority-content">`);
+        lines.push(`      <div class="priority-title">${this._esc(item.title || '')}</div>`);
+        if (item.gap) lines.push(`      <div class="priority-gap">Addresses: ${this._esc(item.gap)}</div>`);
+        if (item.rationale) lines.push(`      <p class="priority-rationale">${this._esc(item.rationale)}</p>`);
+        lines.push(`    </div>`);
+        lines.push(`  </div>`);
+      });
+      lines.push('</section>');
+    }
+
+    // Node cards
+    lines.push('<section class="nodemap-section">');
+    lines.push('  <h2>🧩 Problem Node Map</h2>');
+    lines.push('  <p class="nodemap-hint">Click any node card to expand the debate detail.</p>');
+    lines.push('  <div class="node-grid">');
+
+    nodes.forEach((node, idx) => {
+      const statusClass = 'node-' + (node.status || 'open').toLowerCase();
+      const statusEmoji = this._statusEmoji(node.status);
+      const detailId    = 'node-detail-' + idx;
+      const fp          = foundationalPapers.find(f => f.nodeId === node.id);
+
+      lines.push(`    <div class="node-card ${statusClass}" id="nodecard-${node.id}" onclick="toggleDetail('${detailId}')">`);
+      lines.push(`      <div class="node-header">`);
+      lines.push(`        <span class="node-status-badge">${statusEmoji} ${this._esc(node.status || '')}</span>`);
+      lines.push(`        <span class="node-name">${this._esc(node.name || '')}</span>`);
+      lines.push(`        <span class="node-toggle" id="${detailId}-toggle">▼</span>`);
+      lines.push(`      </div>`);
+      lines.push(`      <p class="node-dispute">${this._esc(node.coreDispute || '')}</p>`);
+      lines.push(`      <div class="node-detail" id="${detailId}" style="display:none;">`);
+
+      if (node.positionA) {
+        lines.push(`        <div class="position-block position-a">`);
+        lines.push(`          <div class="position-label">Position A ${this._sourceBadgeHTML(node.positionA.source)}</div>`);
+        lines.push(`          <p>${this._esc(node.positionA.text || '')}</p>`);
+        lines.push(`        </div>`);
+      }
+      if (node.positionB) {
+        lines.push(`        <div class="position-block position-b">`);
+        lines.push(`          <div class="position-label">Position B ${this._sourceBadgeHTML(node.positionB.source)}</div>`);
+        lines.push(`          <p>${this._esc(node.positionB.text || '')}</p>`);
+        lines.push(`        </div>`);
+      }
+
+      if (node.gaps && node.gaps.length > 0) {
+        lines.push(`        <div class="gaps-block">`);
+        lines.push(`          <div class="block-label">Gaps</div>`);
+        node.gaps.forEach(gap => {
+          const gc  = gap.type === 'boundary' ? 'gap-boundary' : 'gap-library';
+          const gl  = gap.type === 'boundary' ? '🔴 Field boundary' : '📚 Library gap';
+          lines.push(`          <div class="gap-item ${gc}"><strong>${gl}:</strong> ${this._esc(gap.text || '')}</div>`);
+        });
+        lines.push(`        </div>`);
+      }
+
+      if (node.links && node.links.length > 0) {
+        lines.push(`        <div class="links-block">`);
+        lines.push(`          <div class="block-label">Node Links</div>`);
+        node.links.forEach(link => {
+          const arrow      = link.type === 'upstream' ? '←' : link.type === 'tension' ? '↔' : '→';
+          const tc         = 'link-' + (link.type || 'downstream');
+          const targetNode = nodes.find(n => n.id === link.target);
+          const targetName = targetNode ? targetNode.name : link.target;
+          lines.push(`          <div class="link-item ${tc}">${arrow} <strong>${this._esc(link.type || '')}</strong> → ${this._esc(targetName)}: ${this._esc(link.label || '')}</div>`);
+        });
+        lines.push(`        </div>`);
+      }
+
+      if (node.suggestedReading && node.suggestedReading.length > 0) {
+        lines.push(`        <div class="reading-block">`);
+        lines.push(`          <div class="block-label">📄 Suggested Reading</div>`);
+        lines.push(`          <ul>`);
+        node.suggestedReading.forEach(t => lines.push(`            <li>${this._esc(t)}</li>`));
+        lines.push(`          </ul>`);
+        lines.push(`        </div>`);
+      }
+
+      if (fp && fp.papers && fp.papers.length > 0) {
+        lines.push(`        <div class="foundational-block">`);
+        lines.push(`          <div class="block-label">📚 Foundational Papers</div>`);
+        fp.papers.forEach(p => {
+          lines.push(`          <div class="foundational-item">`);
+          lines.push(`            <div class="foundational-title">${this._esc(p.title || '')} ${this._sourceBadgeHTML(p.source)}</div>`);
+          if (p.reason) lines.push(`            <div class="foundational-reason">${this._esc(p.reason)}</div>`);
+          lines.push(`          </div>`);
+        });
+        lines.push(`        </div>`);
+      }
+
+      lines.push(`      </div>`); // .node-detail
+      lines.push(`    </div>`);   // .node-card
+    });
+
+    lines.push('  </div>'); // .node-grid
+    lines.push('</section>');
+
+    lines.push('<footer>');
+    lines.push(`  <p>Generated by <strong>LitGap v3.1 Field Map</strong> on ${dateStr}</p>`);
+    lines.push('</footer>');
+    lines.push('</div>');
+    lines.push('<script>');
+    lines.push(this._getFieldMapScript());
+    lines.push(this._getCopyScript());
+    lines.push('</script>');
+    lines.push('</body>');
+    lines.push('</html>');
+    return lines.join('\n');
+  },
+
+  // ─── SVG node graph generator (layered layout) ─────────────────────────────
 
   /**
-   * Convert a Markdown string to HTML.
-   * Handles: h2, h3, h4, bold, bullet lists, paragraphs.
+   * Generate a self-contained SVG node relationship graph using layered layout.
+   *
+   * Algorithm:
+   *   1. Build directed graph from links (downstream/upstream edges only;
+   *      tension edges are same-layer and handled separately).
+   *   2. Assign layers via longest-path from sources (nodes with no upstream):
+   *      layer 0 = top, layer N = bottom.
+   *   3. Place nodes: each layer is a horizontal row, nodes spread evenly.
+   *   4. Draw edges as curved paths (quadratic bezier) with arrowheads.
+   *      Tension edges drawn as horizontal dashed curves between same-layer nodes.
+   *   5. Node boxes auto-size: width based on text length, text wraps at ~16 chars.
    *
    * @private
-   * @param {string} md
-   * @returns {string} HTML string
+   * @param {Object[]} nodes
+   * @returns {string} SVG HTML string, or '' if no nodes
+   */
+  _generateSVGGraph: function(nodes) {
+    if (!nodes || nodes.length === 0) return '';
+
+    const statusFill   = { Open: '#FAC775', Settled: '#C0DD97', Emerging: '#B5D4F4', Gap: '#F7C1C1' };
+    const statusStroke = { Open: '#BA7517', Settled: '#639922', Emerging: '#185FA5', Gap: '#A32D2D' };
+    const edgeColor    = { downstream: '#1565c0', upstream: '#2e7d32', tension: '#e53935' };
+
+    // ── Step 1: build adjacency (upstream direction = "from → to" in layer graph) ──
+    // downstream link: node is parent of target  → node.layer < target.layer
+    // upstream link:   target is parent of node  → target.layer < node.layer
+    // tension link:    same layer, skip for layer calc
+
+    const parents = {}; // parents[id] = Set of ids that must be in a higher layer
+    nodes.forEach(n => { parents[n.id] = new Set(); });
+    nodes.forEach(node => {
+      if (!node.links) return;
+      node.links.forEach(link => {
+        if (!parents[link.target]) return;
+        if (link.type === 'downstream') {
+          // node is above target
+          parents[link.target].add(node.id);
+        } else if (link.type === 'upstream') {
+          // target is above node
+          parents[node.id].add(link.target);
+        }
+      });
+    });
+
+    // ── Step 2: assign layers via longest-path (iterative) ────────────────────
+    const layer = {};
+    nodes.forEach(n => { layer[n.id] = 0; });
+
+    // Iterate until stable (max nodes iterations to handle cycles gracefully)
+    for (let pass = 0; pass < nodes.length; pass++) {
+      let changed = false;
+      nodes.forEach(node => {
+        parents[node.id].forEach(parentId => {
+          const needed = layer[parentId] + 1;
+          if (needed > layer[node.id]) {
+            layer[node.id] = needed;
+            changed = true;
+          }
+        });
+      });
+      if (!changed) break;
+    }
+
+    // ── Step 3: group nodes by layer, compute positions ───────────────────────
+    const layerGroups = {};
+    nodes.forEach(node => {
+      const l = layer[node.id];
+      if (!layerGroups[l]) layerGroups[l] = [];
+      layerGroups[l].push(node.id);
+    });
+
+    const numLayers   = Math.max(...Object.keys(layerGroups).map(Number)) + 1;
+    const NODE_W      = 160;   // node box width
+    const NODE_H      = 52;    // node box height
+    const H_GAP       = 40;    // horizontal gap between nodes in same layer
+    const V_GAP       = 80;    // vertical gap between layers
+    const MARGIN_TOP  = 30;
+    const MARGIN_SIDE = 40;
+
+    // Canvas width = widest layer
+    const maxLayerSize = Math.max(...Object.values(layerGroups).map(a => a.length));
+    const W = maxLayerSize * (NODE_W + H_GAP) - H_GAP + MARGIN_SIDE * 2;
+    const H = numLayers * (NODE_H + V_GAP) - V_GAP + MARGIN_TOP * 2;
+
+    const positions = {};
+    Object.entries(layerGroups).forEach(([l, ids]) => {
+      const layerNum    = parseInt(l);
+      const layerWidth  = ids.length * NODE_W + (ids.length - 1) * H_GAP;
+      const startX      = (W - layerWidth) / 2;
+      const y           = MARGIN_TOP + layerNum * (NODE_H + V_GAP);
+      ids.forEach((id, i) => {
+        positions[id] = {
+          x:  startX + i * (NODE_W + H_GAP) + NODE_W / 2,
+          y:  y + NODE_H / 2,
+          cx: startX + i * (NODE_W + H_GAP),
+          cy: y
+        };
+      });
+    });
+
+    // ── Step 4: build SVG ──────────────────────────────────────────────────────
+    const svg = [];
+    svg.push(`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="node-graph-svg">`);
+
+    // Defs: arrowhead markers
+    svg.push('  <defs>');
+    ['downstream', 'upstream', 'tension'].forEach(type => {
+      const c = edgeColor[type];
+      svg.push(`    <marker id="arr-${type}" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">`);
+      svg.push(`      <path d="M0,0 L0,6 L8,3 z" fill="${c}" />`);
+      svg.push(`    </marker>`);
+    });
+    svg.push('  </defs>');
+
+    // Draw layer background bands (subtle)
+    Object.entries(layerGroups).forEach(([l, ids]) => {
+      const layerNum = parseInt(l);
+      const bandY    = MARGIN_TOP + layerNum * (NODE_H + V_GAP) - 12;
+      const bandH    = NODE_H + 24;
+      svg.push(`  <rect x="0" y="${bandY}" width="${W}" height="${bandH}" fill="${layerNum % 2 === 0 ? '#f8f9fb' : '#ffffff'}" />`);
+    });
+
+    // Draw edges
+    // Deduplication key: for tension edges, sort node ids (bidirectional).
+    // For downstream/upstream, use directed key — BUT also deduplicate
+    // same-pair same-direction duplicates that arise when AI repeats a link.
+    const drawnEdges = new Set();
+    nodes.forEach(node => {
+      if (!node.links) return;
+      node.links.forEach(link => {
+        // Deduplicate key
+        let edgeKey;
+        if (link.type === 'tension') {
+          edgeKey = 'tension:' + [node.id, link.target].sort().join('~~');
+        } else {
+          // Normalise upstream: treat upstream(A→B) same as downstream(B→A)
+          // so bidirectional duplicates from AI are caught
+          const pair = link.type === 'upstream'
+            ? [link.target, node.id]
+            : [node.id,     link.target];
+          edgeKey = 'dir:' + pair.join('-->');
+        }
+        if (drawnEdges.has(edgeKey)) return;
+        drawnEdges.add(edgeKey);
+
+        const from = positions[node.id];
+        const to   = positions[link.target];
+        if (!from || !to) return;
+
+        const color     = edgeColor[link.type] || '#888';
+        const dash      = link.type === 'tension' ? 'stroke-dasharray="6,3"' : '';
+        const tipText   = this._esc(link.label || link.type); // tooltip on hover
+
+        if (link.type === 'tension') {
+          // Horizontal arc above same-layer nodes
+          const mx = (from.x + to.x) / 2;
+          const my = Math.min(from.y, to.y) - 32;
+          const sx = from.x;
+          const sy = from.y - NODE_H / 2;
+          const ex = to.x;
+          const ey = to.y   - NODE_H / 2;
+          svg.push(`  <path d="M${sx},${sy} Q${mx},${my} ${ex},${ey}" fill="none" stroke="${color}" stroke-width="1.8" ${dash} marker-end="url(#arr-tension)">`);
+          svg.push(`    <title>${tipText}</title>`);
+          svg.push(`  </path>`);
+        } else {
+          // Vertical cubic bezier between layers
+          let sx, sy, ex, ey;
+          if (link.type === 'upstream') {
+            sx = to.x;   sy = to.y   + NODE_H / 2;
+            ex = from.x; ey = from.y - NODE_H / 2;
+          } else {
+            sx = from.x; sy = from.y + NODE_H / 2;
+            ex = to.x;   ey = to.y   - NODE_H / 2;
+          }
+          // Slight horizontal offset when from.x === to.x to separate parallel edges
+          const offset = (sx === ex) ? 6 : 0;
+          const cy1 = sy + (ey - sy) * 0.4;
+          const cy2 = sy + (ey - sy) * 0.6;
+          svg.push(`  <path d="M${(sx + offset).toFixed(1)},${sy.toFixed(1)} C${(sx + offset).toFixed(1)},${cy1.toFixed(1)} ${(ex + offset).toFixed(1)},${cy2.toFixed(1)} ${(ex + offset).toFixed(1)},${ey.toFixed(1)}" fill="none" stroke="${color}" stroke-width="1.8" marker-end="url(#arr-${link.type})">`);
+          svg.push(`    <title>${tipText}</title>`);
+          svg.push(`  </path>`);
+        }
+      });
+    });
+
+    // Draw nodes
+    nodes.forEach(node => {
+      const pos    = positions[node.id];
+      if (!pos) return;
+      const fill   = statusFill[node.status]   || '#e0e0e0';
+      const stroke = statusStroke[node.status] || '#888';
+      const name   = node.name || node.id;
+
+      // Wrap text at ~16 chars per line
+      const words   = name.split(' ');
+      const lines2  = [];
+      let cur       = '';
+      words.forEach(w => {
+        if ((cur + ' ' + w).trim().length > 16 && cur.length > 0) {
+          lines2.push(cur.trim());
+          cur = w;
+        } else {
+          cur = (cur + ' ' + w).trim();
+        }
+      });
+      if (cur) lines2.push(cur);
+
+      const lineH    = 14;
+      const textH    = lines2.length * lineH;
+      const textTopY = pos.y - textH / 2 + lineH * 0.75;
+
+      svg.push(`  <a href="#nodecard-${node.id}">`);
+      svg.push(`    <rect x="${pos.cx}" y="${pos.cy}" width="${NODE_W}" height="${NODE_H}" rx="7" ry="7" fill="${fill}" stroke="${stroke}" stroke-width="2" style="cursor:pointer;" />`);
+      lines2.forEach((ln, li) => {
+        const ty = textTopY + li * lineH;
+        svg.push(`    <text x="${pos.x.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" fill="#1a1a1a" font-family="sans-serif">${this._esc(ln)}</text>`);
+      });
+      svg.push(`  </a>`);
+    });
+
+    svg.push('</svg>');
+    return svg.join('\n');
+  },
+
+  // ─── Mermaid generator ─────────────────────────────────────────────────────
+
+  _generateMermaid: function(nodes) {
+    if (!nodes || nodes.length === 0) return '';
+    const lines = ['graph TD'];
+    nodes.forEach(node => {
+      lines.push(`  ${node.id}["${this._mermaidEscape(node.name || node.id)}"]`);
+    });
+    nodes.forEach(node => {
+      if (!node.links) return;
+      node.links.forEach(link => {
+        const label = this._mermaidEscape(link.label || link.type);
+        if (link.type === 'tension') {
+          lines.push(`  ${node.id} <-->|"${label}"| ${link.target}`);
+        } else if (link.type === 'upstream') {
+          lines.push(`  ${link.target} -->|"${label}"| ${node.id}`);
+        } else {
+          lines.push(`  ${node.id} -->|"${label}"| ${link.target}`);
+        }
+      });
+    });
+    lines.push('  classDef open     fill:#FAC775,stroke:#BA7517,color:#000');
+    lines.push('  classDef settled  fill:#C0DD97,stroke:#639922,color:#000');
+    lines.push('  classDef emerging fill:#B5D4F4,stroke:#185FA5,color:#000');
+    lines.push('  classDef gap      fill:#F7C1C1,stroke:#A32D2D,color:#000');
+    nodes.forEach(node => {
+      lines.push(`  class ${node.id} ${(node.status || 'open').toLowerCase()}`);
+    });
+    return lines.join('\n');
+  },
+
+  // ─── Conceptual Map: Markdown → HTML (BUG FIX: ol/ul tracking) ────────────
+
+  /**
+   * Convert Markdown to HTML.
+   * FIX v3.1: tracks current list type (ol/ul) so closeList() emits the correct
+   * closing tag. Previously always emitted </ul> even for <ol> blocks.
+   * @private
    */
   _markdownToHTML: function(md) {
-    const lines  = md.split('\n');
-    const html   = [];
-    let inList   = false;
-    let inPara   = false;
+    const lines   = md.split('\n');
+    const html    = [];
+    let listType  = null; // 'ul' | 'ol' | null
+    let inPara    = false;
 
-    const closeList  = () => { if (inList)  { html.push('</ul>'); inList  = false; } };
-    const closePara  = () => { if (inPara)  { html.push('</p>');  inPara  = false; } };
+    const closeList = () => {
+      if (listType) { html.push(`</${listType}>`); listType = null; }
+    };
+    const closePara = () => {
+      if (inPara) { html.push('</p>'); inPara = false; }
+    };
 
     for (let i = 0; i < lines.length; i++) {
-      const raw  = lines[i];
-      const line = raw.trimEnd();
+      const line = lines[i].trimEnd();
 
-      // Headings
-      if (line.startsWith('#### ')) {
-        closeList(); closePara();
-        html.push(`<h4>${this._inlineFormat(line.slice(5))}</h4>`);
-        continue;
-      }
-      if (line.startsWith('### ')) {
-        closeList(); closePara();
-        html.push(`<h3>${this._inlineFormat(line.slice(4))}</h3>`);
-        continue;
-      }
-      if (line.startsWith('## ')) {
-        closeList(); closePara();
-        html.push(`<h2>${this._inlineFormat(line.slice(3))}</h2>`);
-        continue;
-      }
-      if (line.startsWith('# ')) {
-        closeList(); closePara();
-        html.push(`<h1>${this._inlineFormat(line.slice(2))}</h1>`);
-        continue;
-      }
+      if (line.startsWith('#### ')) { closeList(); closePara(); html.push(`<h4>${this._inlineFormat(line.slice(5))}</h4>`); continue; }
+      if (line.startsWith('### '))  { closeList(); closePara(); html.push(`<h3>${this._inlineFormat(line.slice(4))}</h3>`); continue; }
+      if (line.startsWith('## '))   { closeList(); closePara(); html.push(`<h2>${this._inlineFormat(line.slice(3))}</h2>`); continue; }
+      if (line.startsWith('# '))    { closeList(); closePara(); html.push(`<h1>${this._inlineFormat(line.slice(2))}</h1>`); continue; }
 
-      // Horizontal rule
-      if (/^---+$/.test(line.trim())) {
-        closeList(); closePara();
-        html.push('<hr>');
-        continue;
-      }
+      if (/^---+$/.test(line.trim())) { closeList(); closePara(); html.push('<hr>'); continue; }
 
-      // Bullet list item
       if (/^[-*]\s+/.test(line)) {
         closePara();
-        if (!inList) { html.push('<ul>'); inList = true; }
-        const content = line.replace(/^[-*]\s+/, '');
-        html.push(`  <li>${this._inlineFormat(content)}</li>`);
+        if (listType !== 'ul') { closeList(); html.push('<ul>'); listType = 'ul'; }
+        html.push(`  <li>${this._inlineFormat(line.replace(/^[-*]\s+/, ''))}</li>`);
         continue;
       }
 
-      // Numbered list item
       if (/^\d+\.\s+/.test(line)) {
         closePara();
-        if (!inList) { html.push('<ol>'); inList = true; }
-        const content = line.replace(/^\d+\.\s+/, '');
-        html.push(`  <li>${this._inlineFormat(content)}</li>`);
+        if (listType !== 'ol') { closeList(); html.push('<ol>'); listType = 'ol'; }
+        html.push(`  <li>${this._inlineFormat(line.replace(/^\d+\.\s+/, ''))}</li>`);
         continue;
       }
 
-      // Empty line
-      if (line.trim() === '') {
-        closeList(); closePara();
-        continue;
-      }
+      if (line.trim() === '') { closeList(); closePara(); continue; }
 
-      // Regular paragraph text
       closeList();
       if (!inPara) { html.push('<p>'); inPara = true; }
       else { html.push('<br>'); }
@@ -269,27 +785,22 @@ var KGMReporter = {
     return html.join('\n');
   },
 
-  /**
-   * Render the gap analysis section with special "Suggested question" styling.
-   * Detects the "Suggested question for your AI assistant:" bold label and
-   * wraps the following text in a styled card with a Copy button.
-   *
-   * @private
-   * @param {string} md - Gap analysis Markdown
-   * @returns {string} HTML
-   */
+  // ─── Gap analysis renderer (same ol/ul fix applied) ────────────────────────
+
   _renderGapAnalysis: function(md) {
-    // Split into lines and process
     const lines  = md.split('\n');
     const html   = [];
+    let listType         = null;
+    let inPara           = false;
     let inSuggestedBlock = false;
     let suggestedLines   = [];
-    let inList   = false;
-    let inPara   = false;
 
-    const closeList = () => { if (inList)  { html.push('</ul>'); inList  = false; } };
-    const closePara = () => { if (inPara)  { html.push('</p>');  inPara  = false; } };
-
+    const closeList = () => {
+      if (listType) { html.push(`</${listType}>`); listType = null; }
+    };
+    const closePara = () => {
+      if (inPara) { html.push('</p>'); inPara = false; }
+    };
     const flushSuggested = () => {
       if (!inSuggestedBlock) return;
       const text = suggestedLines.join('\n').trim();
@@ -306,76 +817,43 @@ var KGMReporter = {
     };
 
     for (let i = 0; i < lines.length; i++) {
-      const raw  = lines[i];
-      const line = raw.trimEnd();
+      const line = lines[i].trimEnd();
 
-      // Detect start of "Suggested question" block
-      // Matches: **Suggested question for your AI assistant:**
       if (/\*\*Suggested question[^*]*\*\*/.test(line)) {
         closeList(); closePara(); flushSuggested();
         inSuggestedBlock = true;
-        // Check if the question text is on the same line after the label
         const afterLabel = line.replace(/\*\*Suggested question[^*]*\*\*:?\s*/i, '').trim();
         if (afterLabel) suggestedLines.push(afterLabel);
         continue;
       }
 
-      // While inside suggested block, collect lines until next heading or empty line
-      // followed by a heading/bold label (i.e., next section starts)
       if (inSuggestedBlock) {
-        const nextLine = lines[i + 1] || '';
+        const nextLine      = lines[i + 1] || '';
         const isNextSection = /^(#{1,4}\s|\*\*[A-Z])/.test(nextLine.trim());
-
-        if (line.trim() === '' && isNextSection) {
-          flushSuggested();
-          continue;
-        }
-        if (/^#{1,4}\s/.test(line)) {
-          flushSuggested();
-          // Fall through to heading handling below
-        } else {
-          suggestedLines.push(line);
-          continue;
-        }
+        if (line.trim() === '' && isNextSection) { flushSuggested(); continue; }
+        if (/^#{1,4}\s/.test(line)) { flushSuggested(); }
+        else { suggestedLines.push(line); continue; }
       }
 
-      // Standard Markdown processing (same as _markdownToHTML)
-      if (line.startsWith('#### ')) {
-        closeList(); closePara();
-        html.push(`<h4>${this._inlineFormat(line.slice(5))}</h4>`);
-        continue;
-      }
-      if (line.startsWith('### ')) {
-        closeList(); closePara();
-        html.push(`<h3>${this._inlineFormat(line.slice(4))}</h3>`);
-        continue;
-      }
-      if (line.startsWith('## ')) {
-        closeList(); closePara();
-        html.push(`<h2>${this._inlineFormat(line.slice(3))}</h2>`);
-        continue;
-      }
-      if (/^---+$/.test(line.trim())) {
-        closeList(); closePara();
-        html.push('<hr>');
-        continue;
-      }
+      if (line.startsWith('#### ')) { closeList(); closePara(); html.push(`<h4>${this._inlineFormat(line.slice(5))}</h4>`); continue; }
+      if (line.startsWith('### '))  { closeList(); closePara(); html.push(`<h3>${this._inlineFormat(line.slice(4))}</h3>`); continue; }
+      if (line.startsWith('## '))   { closeList(); closePara(); html.push(`<h2>${this._inlineFormat(line.slice(3))}</h2>`); continue; }
+      if (/^---+$/.test(line.trim())) { closeList(); closePara(); html.push('<hr>'); continue; }
+
       if (/^[-*]\s+/.test(line)) {
         closePara();
-        if (!inList) { html.push('<ul>'); inList = true; }
+        if (listType !== 'ul') { closeList(); html.push('<ul>'); listType = 'ul'; }
         html.push(`  <li>${this._inlineFormat(line.replace(/^[-*]\s+/, ''))}</li>`);
         continue;
       }
       if (/^\d+\.\s+/.test(line)) {
         closePara();
-        if (!inList) { html.push('<ol>'); inList = true; }
+        if (listType !== 'ol') { closeList(); html.push('<ol>'); listType = 'ol'; }
         html.push(`  <li>${this._inlineFormat(line.replace(/^\d+\.\s+/, ''))}</li>`);
         continue;
       }
-      if (line.trim() === '') {
-        closeList(); closePara();
-        continue;
-      }
+      if (line.trim() === '') { closeList(); closePara(); continue; }
+
       closeList();
       if (!inPara) { html.push('<p>'); inPara = true; }
       else { html.push('<br>'); }
@@ -386,11 +864,31 @@ var KGMReporter = {
     return html.join('\n');
   },
 
-  /**
-   * Apply inline Markdown formatting: **bold**, *italic*, `code`.
-   *
-   * @private
-   */
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  _statusEmoji: function(status) {
+    return { Open: '🟡', Settled: '🟢', Emerging: '🔵', Gap: '🔴' }[status] || '⚪';
+  },
+
+  _sourceLabel: function(source) {
+    return { user_library: '[User Library]', ai_inferred: '[AI Inferred — verify]', confirmed: '[Confirmed]' }[source] || '[AI Inferred — verify]';
+  },
+
+  _sourceBadgeHTML: function(source) {
+    const m = {
+      user_library: ['src-user',      'User Library'],
+      ai_inferred:  ['src-ai',        'AI Inferred — verify'],
+      confirmed:    ['src-confirmed', 'Confirmed']
+    };
+    const [cls, label] = m[source] || m['ai_inferred'];
+    return `<span class="src-tag ${cls}">${label}</span>`;
+  },
+
+  _mermaidEscape: function(text) {
+    if (!text) return '';
+    return String(text).replace(/"/g, "'").replace(/[<>]/g, ' ');
+  },
+
   _inlineFormat: function(text) {
     if (!text) return '';
     return this._esc(text)
@@ -399,10 +897,6 @@ var KGMReporter = {
       .replace(/`(.+?)`/g,       '<code>$1</code>');
   },
 
-  /**
-   * Escape HTML special characters.
-   * @private
-   */
   _esc: function(text) {
     if (!text) return '';
     return String(text)
@@ -413,11 +907,20 @@ var KGMReporter = {
       .replace(/'/g,  '&#039;');
   },
 
-  // ─── Copy button script ────────────────────────────────────────────────────
+  // ─── Scripts ───────────────────────────────────────────────────────────────
 
-  /**
-   * @private
-   */
+  _getFieldMapScript: function() {
+    return `
+function toggleDetail(id) {
+  var el     = document.getElementById(id);
+  var toggle = document.getElementById(id + '-toggle');
+  if (!el) return;
+  var isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (toggle) toggle.textContent = isOpen ? '▼' : '▲';
+}`;
+  },
+
   _getCopyScript: function() {
     return `
 function copyText(id) {
@@ -431,12 +934,8 @@ function copyText(id) {
     });
   } else {
     var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity  = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
     var btn = el.parentElement.querySelector('.copy-btn');
     if (btn) { btn.textContent = '✓ Copied!'; setTimeout(function(){ btn.textContent = '📋 Copy'; }, 2000); }
@@ -446,148 +945,100 @@ function copyText(id) {
 
   // ─── CSS ───────────────────────────────────────────────────────────────────
 
-  /**
-   * @private
-   */
   _getStyles: function() {
     return `
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  line-height: 1.7;
-  color: #24292e;
-  background: #f6f8fa;
-  padding: 20px;
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  background: white;
-  padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* Header */
-header {
-  text-align: center;
-  margin-bottom: 36px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e1e4e8;
-}
-header h1  { font-size: 2.2em; color: #24292e; margin-bottom: 8px; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.7; color: #24292e; background: #f6f8fa; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+header { text-align: center; margin-bottom: 36px; padding-bottom: 20px; border-bottom: 2px solid #e1e4e8; }
+header h1 { font-size: 2.2em; color: #24292e; margin-bottom: 8px; }
 .collection-name { font-size: 1.2em; color: #0366d6; font-weight: 600; margin-bottom: 4px; }
 .date { color: #586069; font-size: 0.9em; }
-
-/* Section spacing */
 section { margin-bottom: 40px; }
-
-/* Headings */
-h2 {
-  font-size: 1.6em; color: #24292e;
-  margin: 28px 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e1e4e8;
-}
+h2 { font-size: 1.6em; color: #24292e; margin: 28px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #e1e4e8; }
 h3 { font-size: 1.25em; color: #0366d6; margin: 22px 0 10px; }
 h4 { font-size: 1.05em; color: #24292e; margin: 16px 0 8px; }
-p  { margin: 8px 0; }
+p { margin: 8px 0; }
 hr { border: none; border-top: 1px solid #e1e4e8; margin: 24px 0; }
-
-/* Lists */
 ul, ol { padding-left: 28px; margin: 8px 0; }
 li { margin: 4px 0; }
 code { background: #f6f8fa; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
-
-/* Context list */
 .context-list { list-style: none; padding: 0; }
 .context-list li { padding: 6px 0; border-bottom: 1px solid #f6f8fa; }
-
-/* Framework section */
-.framework-section {
-  background: #f8fbff;
-  border-left: 4px solid #0366d6;
-  padding: 20px 24px;
-  border-radius: 4px;
-}
-
-/* Gap section */
-.gap-section { }
-
-/* Suggested question card */
-.suggested-question {
-  background: #EBF5FB;
-  border-left: 4px solid #0366d6;
-  border-radius: 6px;
-  padding: 16px 20px;
-  margin: 16px 0;
-}
-.sq-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.sq-label {
-  font-weight: 600;
-  color: #0366d6;
-  font-size: 0.95em;
-}
-.copy-btn {
-  background: #0366d6;
-  color: white;
-  border: none;
-  padding: 5px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
+.framework-section { background: #f8fbff; border-left: 4px solid #0366d6; padding: 20px 24px; border-radius: 4px; }
+.suggested-question { background: #EBF5FB; border-left: 4px solid #0366d6; border-radius: 6px; padding: 16px 20px; margin: 16px 0; }
+.sq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sq-label { font-weight: 600; color: #0366d6; font-size: 0.95em; }
+.copy-btn { background: #0366d6; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em; transition: background 0.2s; white-space: nowrap; }
 .copy-btn:hover { background: #0256c7; }
-.sq-content {
-  color: #24292e;
-  font-size: 0.95em;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* How to use */
-.howto-section {
-  background: #f6fff6;
-  border-left: 4px solid #28a745;
-  padding: 20px 24px;
-  border-radius: 4px;
-}
+.sq-content { color: #24292e; font-size: 0.95em; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.howto-section { background: #f6fff6; border-left: 4px solid #28a745; padding: 20px 24px; border-radius: 4px; }
 .howto-section ol { padding-left: 22px; }
 .howto-section li { margin: 8px 0; }
+footer { text-align: center; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e1e4e8; color: #586069; font-size: 0.9em; }
+@media print { body { background: white; padding: 0; } .container { box-shadow: none; max-width: 100%; } .copy-btn { display: none; } }
+@media (max-width: 768px) { body { padding: 10px; } .container { padding: 20px; } header h1 { font-size: 1.7em; } .sq-header { flex-direction: column; align-items: flex-start; gap: 8px; } }`;
+  },
 
-/* Footer */
-footer {
-  text-align: center;
-  margin-top: 40px;
-  padding-top: 16px;
-  border-top: 1px solid #e1e4e8;
-  color: #586069;
-  font-size: 0.9em;
-}
+  _getFieldMapStyles: function() {
+    return `
+.source-legend { font-size: 0.85em; color: #586069; margin-top: 8px; }
+.src-tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.8em; font-weight: 600; margin-right: 2px; }
+.src-user      { background: #C0DD97; color: #2b5a0a; }
+.src-ai        { background: #FAC775; color: #7a4000; }
+.src-confirmed { background: #B5D4F4; color: #0a3c6e; }
+.questions-section { background: #f8fbff; border-left: 4px solid #0366d6; padding: 20px 24px; border-radius: 4px; }
+.core-questions { padding-left: 22px; }
+.core-questions li { margin: 8px 0; font-size: 1.0em; }
+.narrative-section p { margin: 12px 0; line-height: 1.8; color: #444; }
 
-/* Print */
-@media print {
-  body { background: white; padding: 0; }
-  .container { box-shadow: none; max-width: 100%; }
-  .copy-btn { display: none; }
-}
+/* SVG graph */
+.graph-section { margin-bottom: 40px; }
+.graph-hint { color: #586069; font-size: 0.88em; margin-bottom: 12px; }
+.node-graph-svg { width: 100%; border: 1px solid #e1e4e8; border-radius: 6px; background: #fafbfc; display: block; }
 
-/* Mobile */
-@media (max-width: 768px) {
-  body { padding: 10px; }
-  .container { padding: 20px; }
-  header h1 { font-size: 1.7em; }
-  .sq-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-}`;
+/* Priority reading */
+.priority-hint { color: #586069; font-size: 0.9em; margin-bottom: 16px; }
+.priority-item { display: flex; gap: 16px; align-items: flex-start; padding: 14px 16px; border: 1px solid #e1e4e8; border-radius: 8px; margin-bottom: 12px; background: #fffbf0; border-left: 4px solid #f9a825; }
+.priority-rank { font-size: 1.4em; font-weight: 800; color: #BA7517; min-width: 28px; line-height: 1.3; }
+.priority-title { font-weight: 600; font-size: 1.0em; margin-bottom: 4px; }
+.priority-gap { font-size: 0.85em; color: #586069; margin-bottom: 6px; }
+.priority-rationale { font-size: 0.92em; color: #444; line-height: 1.6; margin: 0; }
+
+/* Node map */
+.nodemap-hint { color: #586069; font-size: 0.9em; margin-bottom: 16px; }
+.node-grid { display: flex; flex-direction: column; gap: 12px; }
+.node-card { border: 2px solid #e1e4e8; border-radius: 8px; padding: 16px 20px; cursor: pointer; transition: box-shadow 0.15s; }
+.node-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+.node-open     { border-color: #BA7517; background: #fffbf0; }
+.node-settled  { border-color: #639922; background: #f6fff0; }
+.node-emerging { border-color: #185FA5; background: #f0f7ff; }
+.node-gap      { border-color: #A32D2D; background: #fff5f5; }
+.node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.node-status-badge { font-size: 0.8em; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(0,0,0,0.06); white-space: nowrap; }
+.node-name   { font-size: 1.1em; font-weight: 700; flex: 1; }
+.node-toggle { color: #586069; font-size: 0.9em; }
+.node-dispute { color: #555; font-size: 0.95em; font-style: italic; }
+.node-detail { margin-top: 16px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 16px; }
+.position-block { padding: 12px 16px; border-radius: 6px; margin-bottom: 10px; }
+.position-a { background: #f0f7ff; border-left: 3px solid #185FA5; }
+.position-b { background: #f9f0ff; border-left: 3px solid #6f42c1; }
+.position-label { font-weight: 600; font-size: 0.9em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.block-label { font-weight: 600; font-size: 0.88em; color: #586069; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; margin-top: 12px; }
+.gap-item { padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; font-size: 0.92em; }
+.gap-library  { background: #fff8e1; border-left: 3px solid #f9a825; }
+.gap-boundary { background: #fff0f0; border-left: 3px solid #e53935; }
+.link-item { padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; font-size: 0.92em; background: #f6f8fa; }
+.link-tension    { background: #fff0f0; }
+.link-upstream   { background: #f0fff0; }
+.link-downstream { background: #f0f4ff; }
+.reading-block ul { padding-left: 20px; }
+.reading-block li { font-size: 0.92em; color: #0366d6; margin: 4px 0; }
+.foundational-block { margin-top: 12px; }
+.foundational-item { padding: 8px 10px; border-radius: 4px; margin-bottom: 8px; background: #f8fbff; border-left: 3px solid #0366d6; }
+.foundational-title { font-weight: 600; font-size: 0.9em; margin-bottom: 4px; }
+.foundational-reason { font-size: 0.88em; color: #444; }
+@media (max-width: 768px) { .node-header { flex-wrap: wrap; } .priority-item { flex-direction: column; gap: 8px; } }`;
   }
+
 };

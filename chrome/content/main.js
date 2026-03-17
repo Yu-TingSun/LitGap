@@ -3,7 +3,7 @@
  * Coordinates Parser -> API -> Analyzer
  *
  * @module main
- * @version 2.0.2
+ * @version 3.0.0
  *
  * CHANGELOG v2.0.2:
  *   - Added: After Find Hidden Papers saves successfully, prompt user to

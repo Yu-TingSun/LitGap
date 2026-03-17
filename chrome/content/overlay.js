@@ -2,7 +2,12 @@
  * LitGap - UI Overlay (Zotero 7/8)
  * Pure JavaScript UI integration with smart sampling
  *
- * @version 2.0.1
+ * @version 3.0.0
+ *
+ * CHANGELOG v3.0.0:
+ *   - Changed: "Analyze Knowledge Gaps (KGM)" menu label renamed to
+ *     "Map Your Research Field"
+ *   - All other logic unchanged from v2.0.1.
  *
  * CHANGELOG v2.0.1:
  *   - Fixed: Right-click menu unreliable on first Zotero launch (Problem B)
@@ -106,7 +111,7 @@ var LitGapOverlay = {
    * Menu layout (top → bottom):
    *   menuseparator          #litgap-separator
    *   Find Hidden Papers     #litgap-analyze
-   *   Analyze Knowledge Gaps #litgap-kgm-menuitem
+   *   Map Your Research Field #litgap-kgm-menuitem
    *   Reset LitGap Prefs     #litgap-reset-prefs   ← always last
    *
    * @param {Document} doc
@@ -139,10 +144,10 @@ var LitGapOverlay = {
     this.menuItem.addEventListener('command', () => this.onAnalyzeClick());
     collectionMenu.appendChild(this.menuItem);
 
-    // ── 3. Analyze Knowledge Gaps (KGM) ─────────────────────────────────────
+    // ── 3. Map Your Research Field) ─────────────────────────────────────
     const kgmMenuItem = doc.createXULElement('menuitem');
     kgmMenuItem.id = 'litgap-kgm-menuitem';
-    kgmMenuItem.setAttribute('label', 'Analyze Knowledge Gaps (KGM)');
+    kgmMenuItem.setAttribute('label', 'Map Your Research Field');
     kgmMenuItem.addEventListener('command', () => {
       const collection = Zotero.getActiveZoteroPane().getSelectedCollection();
       if (!collection) {

@@ -1,9 +1,9 @@
 /**
  * LitGap - KGM Main Orchestrator
- * Feature 2: Knowledge Gap Mapping
+ * Feature 2: Conceptual Map + Field Map analysis
  *
  * @module kgmMain
- * @version 2.0.1
+ * @version 3.0.0
  *
  * Injected globals (from bootstrap.js kgmScope):
  *   LitGap       → LitGap.KGMAnalyzer, LitGap.KGMReporter, LitGap.AIClient,
@@ -19,22 +19,26 @@
  *       LitGap.ProgressUI instead of typeof ProgressUI !== 'undefined'.
  *
  * Entry point:
- *   KGMMain.run(collection)  — called from overlay.js KGM menu item
+ *   KGMMain.run(collection)  — called from overlay.js menu item
  *
  * Flow:
  *   [Pre-check]  collectLibraryData — bail if empty collection
  *   [Step 1]     _getMissingPapers  — load .md OR run Feature 1 (skipSave mode)
  *   [Step 2]     _ensureAIClient    — read Prefs or show settings dialog (with retry)
  *   [Step 3]     _confirmTopic      — AI topic detection + user confirmation / manual edit
- *   [Step 4]     _runKGMAnalysis    — two-step AI analysis with ProgressUI
- *   [Step 5]     _saveReports       — File Picker → kgm_*.md + kgm_*.html
+ *   [Step 4]     _chooseOutputs     — user selects: Conceptual Map / Field Map / Both
+ *   [Step 5]     _runAnalysis       — AI analysis steps based on chosen outputs
+ *   [Step 6]     _saveReports       — File Picker → save chosen report files
  *   [finally]    LitGap.ProgressUI.hide()  — always runs
  *
- * CHANGELOG v2.0.1:
- *   - Fixed: All bare `ProgressUI` references replaced with `LitGap.ProgressUI`
- *   - Fixed: All `typeof ProgressUI !== 'undefined'` guards replaced with `LitGap.ProgressUI`
- *   - Reason: Zotero 8 loadSubScript scope isolation — bare variable names are
- *             inaccessible inside function closures; must use object property access.
+ * CHANGELOG v3.0.0:
+ *   - Renamed menu label from "Analyze Knowledge Gaps (KGM)" to "Map Your Research Field"
+ *   - Added Step 4: output selection dialog (Conceptual Map / Field Map / Both)
+ *   - _runAnalysis now accepts includeFieldMap flag, delegates to KGMAnalyzer.runAnalysis()
+ *     with options.includeFieldMap when Field Map is requested
+ *   - _saveReports now saves Conceptual Map and/or Field Map files based on selection
+ *   - Progress steps updated: 2 steps (Conceptual Map only) or 4 steps (Both)
+ *   - API cost notice updated: 2 calls for Conceptual Map, 4 calls for Both
  */
 
 var KGMMain = {
@@ -42,13 +46,13 @@ var KGMMain = {
   // ─── Entry point ────────────────────────────────────────────────────────────
 
   /**
-   * Main entry point. Called from overlay.js KGM menu item.
+   * Main entry point. Called from overlay.js "Map Your Research Field" menu item.
    *
    * @param {Zotero.Collection} collection
    */
   run: async function(collection) {
     Zotero.debug('\n' + '='.repeat(60));
-    Zotero.debug(`[KGMMain] Starting KGM analysis for: ${collection.name}`);
+    Zotero.debug(`[KGMMain] Starting analysis for: ${collection.name}`);
     Zotero.debug('='.repeat(60));
 
     try {
@@ -57,9 +61,9 @@ var KGMMain = {
       const libraryData = LitGap.KGMAnalyzer.collectLibraryData(collection);
 
       if (libraryData.allTitles.length === 0) {
-        Services.prompt.alert(null, 'LitGap KGM',
+        Services.prompt.alert(null, 'LitGap',
           'No papers found in this collection.\n\n' +
-          'Please add papers to the collection before running KGM analysis.');
+          'Please add papers to the collection before running analysis.');
         return;
       }
 
@@ -81,14 +85,22 @@ var KGMMain = {
 
       Zotero.debug(`[KGMMain] Confirmed domain: "${confirmedDomain}"`);
 
-      // ── Step 4: Run two-step KGM analysis ────────────────────────────────
-      const { framework, gapAnalysis } = await this._runKGMAnalysis(
-        libraryData, missingPapers, confirmedDomain, aiClient
-      );
+      // ── Step 4: Choose which outputs to generate ──────────────────────────
+      const outputChoice = this._chooseOutputs();
+      if (!outputChoice) return; // user cancelled
 
-      // ── Step 5: Save reports ──────────────────────────────────────────────
+      Zotero.debug(`[KGMMain] Output choice: ${outputChoice}`);
+
+      // ── Step 5: Run analysis ──────────────────────────────────────────────
+      const includeFieldMap = (outputChoice === 'fieldmap' || outputChoice === 'both');
+      const results = await this._runAnalysis(
+        libraryData, missingPapers, confirmedDomain, aiClient, includeFieldMap
+      );
+      if (!results) return; // handled error
+
+      // ── Step 6: Save reports ──────────────────────────────────────────────
       await this._saveReports(
-        collection, libraryData, missingPapers, framework, gapAnalysis, aiClient
+        collection, libraryData, missingPapers, results, aiClient, outputChoice
       );
 
       Zotero.debug('[KGMMain] Workflow completed successfully');
@@ -98,17 +110,14 @@ var KGMMain = {
       if (e instanceof _KGMHandledError || e.name === '_KGMHandledError') {
         Zotero.debug(`[KGMMain] Handled error (no second dialog): ${e.message}`);
       } else {
-        // Truly unexpected errors not caught by individual steps
         Zotero.debug(`[KGMMain] Unexpected error: ${e.message}`);
         Zotero.debug(e.stack || '(no stack)');
         Zotero.logError(e);
-        Services.prompt.alert(null, 'LitGap KGM',
+        Services.prompt.alert(null, 'LitGap',
           `An unexpected error occurred:\n${e.message}\n\n` +
           'Check Help > Debug Output Logging for details.');
       }
     } finally {
-      // Always hide progress UI, even on error or early return
-      // v2.0.1: Use LitGap.ProgressUI instead of bare ProgressUI
       if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
     }
   },
@@ -123,13 +132,11 @@ var KGMMain = {
    *
    * @param {Zotero.Collection} collection
    * @returns {Promise<Array<{title,mentionCount}>|null>}
-   *          Array of missing papers, or null if user cancelled
    */
   _getMissingPapers: async function(collection) {
-
     const result = Services.prompt.confirmEx(
       null,
-      'LitGap KGM',
+      'LitGap — Map Your Research Field',
       'To analyze knowledge gaps, LitGap needs a Find Hidden Papers report ' +
       'for this collection.\n\n' +
       'Do you have an existing report, or would you like to run the analysis now?',
@@ -147,15 +154,8 @@ var KGMMain = {
       return null;
     }
 
-    // ── Option 0: Load existing .md report ──────────────────────────────────
-    if (result === 0) {
-      return await this._loadReportFile();
-    }
-
-    // ── Option 1: Run Feature 1 now ──────────────────────────────────────────
-    if (result === 1) {
-      return await this._runFeature1AndContinue(collection);
-    }
+    if (result === 0) return await this._loadReportFile();
+    if (result === 1) return await this._runFeature1AndContinue(collection);
 
     return null;
   },
@@ -163,7 +163,7 @@ var KGMMain = {
   /**
    * Open a File Picker to load an existing litgap_*.md report.
    *
-   * @returns {Promise<Array|null>} Parsed missing papers, or null on cancel/error
+   * @returns {Promise<Array|null>}
    */
   _loadReportFile: async function() {
     const win = Zotero.getMainWindow();
@@ -185,7 +185,7 @@ var KGMMain = {
     try {
       content = await IOUtils.readUTF8(fp.file.path);
     } catch (e) {
-      Services.prompt.alert(null, 'LitGap KGM',
+      Services.prompt.alert(null, 'LitGap',
         `Failed to read file:\n${fp.file.path}\n\n${e.message}`);
       return null;
     }
@@ -193,7 +193,7 @@ var KGMMain = {
     const papers = LitGap.KGMAnalyzer.parseLitGapReport(content);
 
     if (papers.length === 0) {
-      Services.prompt.alert(null, 'LitGap KGM',
+      Services.prompt.alert(null, 'LitGap',
         'No missing papers found in the selected report.\n\n' +
         'Please make sure you selected a LitGap report (litgap_*.md), ' +
         'or run Find Hidden Papers to generate a new one.');
@@ -206,9 +206,9 @@ var KGMMain = {
 
   /**
    * Run Feature 1 in skipSave mode, then show the three-option save dialog:
-   *   [Continue KGM] → save report → parse and return missing papers
-   *   [Save Only]    → save report → show tip → return null (stop KGM)
-   *   [Cancel]       → return null (discard results)
+   *   [Continue to Map]  → save report → parse and return missing papers
+   *   [Save Only]        → save report → show tip → return null
+   *   [Cancel]           → return null
    *
    * @param {Zotero.Collection} collection
    * @returns {Promise<Array|null>}
@@ -216,7 +216,6 @@ var KGMMain = {
   _runFeature1AndContinue: async function(collection) {
     Zotero.debug('[KGMMain] Running Feature 1 in skipSave mode...');
 
-    // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
     if (LitGap.ProgressUI) {
       LitGap.ProgressUI.show('LitGap: Finding Hidden Papers...');
     }
@@ -226,81 +225,72 @@ var KGMMain = {
       f1Result = await LitGapMain.run(collection, null, { skipSave: true });
     } catch (e) {
       if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
-      Services.prompt.alert(null, 'LitGap KGM',
+      Services.prompt.alert(null, 'LitGap',
         `Find Hidden Papers encountered an error:\n${e.message}`);
       return null;
     }
 
     if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
 
-    // Feature 1 returned false or an unexpected value (no papers, no DOI, etc.)
     if (!f1Result || !f1Result.success) {
       Zotero.debug('[KGMMain] Feature 1 did not complete successfully');
-      // Feature 1 already showed its own error dialog; just return null here
       return null;
     }
 
     const { reportMarkdown, reportHTML, recommendations } = f1Result;
     Zotero.debug(`[KGMMain] Feature 1 complete: ${recommendations.length} recommendations`);
 
-    // ── Three-option save dialog ─────────────────────────────────────────────
     const saveResult = Services.prompt.confirmEx(
       null,
-      'LitGap - Find Hidden Papers Complete! \uD83C\uDF89',
+      'LitGap \u2014 Find Hidden Papers Complete! \uD83C\uDF89',
       `Found ${recommendations.length} recommended paper(s).\n\n` +
       'What would you like to do next?',
       (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0) +
       (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_1) +
       (Services.prompt.BUTTON_TITLE_CANCEL   * Services.prompt.BUTTON_POS_2),
-      '\uD83D\uDCCA Continue to KGM Analysis',  // 0
-      '\uD83D\uDCBE Save Report Only',            // 1
-      null,                                       // 2 = Cancel (discard)
+      '\uD83D\uDDFA\uFE0F Continue to Map Your Research Field',  // 0
+      '\uD83D\uDCBE Save Report Only',                            // 1
+      null,                                                        // 2 = Cancel
       null, {}
     );
 
-    // Cancel — discard results silently
     if (saveResult === 2 || saveResult === -1) {
       Zotero.debug('[KGMMain] User discarded Feature 1 results');
       return null;
     }
 
-    // Both "Continue KGM" and "Save Only" need to save the report first
-    const savedPath = await this._saveFeature1Report(
-      reportMarkdown, reportHTML, collection.name
-    );
+    const savedPath = await this._saveFeature1Report(reportMarkdown, reportHTML, collection.name);
 
     if (!savedPath) {
-      // User cancelled the file picker — discard
       Zotero.debug('[KGMMain] User cancelled Feature 1 report save');
       return null;
     }
 
-    // Save Only — remind user they can run KGM later, then stop
     if (saveResult === 1) {
       Services.prompt.alert(null, 'LitGap',
         'Report saved successfully.\n\n' +
-        '\uD83D\uDCA1 Tip: You can run Knowledge Gap Mapping at any time by\n' +
+        '\uD83D\uDCA1 Tip: You can run Map Your Research Field at any time by\n' +
         'right-clicking the collection and selecting\n' +
-        '"Analyze Knowledge Gaps (KGM)".');
+        '"Map Your Research Field".');
       return null;
     }
 
-    // Continue KGM (saveResult === 0) — parse the just-saved .md
+    // Continue (saveResult === 0) — parse the just-saved .md
     let content;
     try {
       content = await IOUtils.readUTF8(savedPath);
     } catch (e) {
-      Services.prompt.alert(null, 'LitGap KGM',
-        `Report was saved, but could not be read back for KGM analysis:\n${e.message}\n\n` +
-        'You can load it manually from the KGM menu.');
+      Services.prompt.alert(null, 'LitGap',
+        `Report was saved, but could not be read back for analysis:\n${e.message}\n\n` +
+        'You can load it manually from the menu.');
       return null;
     }
 
     const papers = LitGap.KGMAnalyzer.parseLitGapReport(content);
 
     if (papers.length === 0) {
-      Services.prompt.alert(null, 'LitGap KGM',
-        'Report saved, but no missing papers could be parsed for KGM.\n\n' +
+      Services.prompt.alert(null, 'LitGap',
+        'Report saved, but no missing papers could be parsed.\n\n' +
         'Your library may already be well-covered!');
       return null;
     }
@@ -309,13 +299,12 @@ var KGMMain = {
   },
 
   /**
-   * Save Feature 1 reports (called in skipSave mode).
-   * Returns the saved .md file path, or null if user cancelled.
+   * Save Feature 1 reports. Returns saved .md path or null if cancelled.
    *
    * @param {string} reportMarkdown
    * @param {string} reportHTML
    * @param {string} collectionName
-   * @returns {Promise<string|null>} Absolute path to saved .md, or null
+   * @returns {Promise<string|null>}
    */
   _saveFeature1Report: async function(reportMarkdown, reportHTML, collectionName) {
     const win = Zotero.getMainWindow();
@@ -325,20 +314,17 @@ var KGMMain = {
     const safeName = collectionName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
-    fp.init(win.browsingContext, 'Save LitGap Report (Markdown)', fp.modeSave);
+    fp.init(win.browsingContext, 'Save LitGap Report', fp.modeSave);
     fp.appendFilter('Markdown Files', '*.md');
     fp.defaultString    = `litgap_${safeName}_${dateStr}.md`;
     fp.defaultExtension = 'md';
 
     const rv = await new Promise(resolve => fp.open(r => resolve(r)));
 
-    if (rv !== fp.returnOK && rv !== fp.returnReplace) {
-      return null;
-    }
+    if (rv !== fp.returnOK && rv !== fp.returnReplace) return null;
 
     const mdPath   = fp.file.path;
-    const basePath = mdPath.replace(/\.md$/, '');
-    const htmlPath = basePath + '.html';
+    const htmlPath = mdPath.replace(/\.md$/, '.html');
 
     try {
       await IOUtils.writeUTF8(mdPath,   reportMarkdown);
@@ -346,8 +332,7 @@ var KGMMain = {
       Zotero.debug(`[KGMMain] Feature 1 report saved: ${mdPath}`);
       return mdPath;
     } catch (e) {
-      Services.prompt.alert(null, 'LitGap KGM',
-        `Failed to save report:\n${e.message}`);
+      Services.prompt.alert(null, 'LitGap', `Failed to save report:\n${e.message}`);
       return null;
     }
   },
@@ -358,7 +343,7 @@ var KGMMain = {
    * Return a ready AIClient instance.
    * Uses saved Prefs if available; otherwise shows the settings dialog.
    *
-   * @returns {Promise<Object|null>} AIClient instance, or null if user cancelled
+   * @returns {Promise<Object|null>}
    */
   _ensureAIClient: async function() {
     const client = LitGap.AIClient.createFromPrefs();
@@ -373,28 +358,27 @@ var KGMMain = {
   },
 
   /**
-   * Multi-step AI settings dialog using native Services.prompt calls.
-   * Includes retry loop on connection failure.
+   * Multi-step AI settings dialog. Includes retry loop on connection failure.
    *
-   * @returns {Promise<Object|null>} Configured and tested AIClient, or null
+   * @returns {Promise<Object|null>}
    */
   _showAISettingsDialog: async function() {
     const ps = Services.prompt;
 
-    // Keep looping until user succeeds, cancels, or explicitly exits
     while (true) {
 
       // ── 1. Choose provider ──────────────────────────────────────────────
       const providerInput = { value: 'anthropic' };
       const ok1 = ps.prompt(
         null,
-        'LitGap KGM \u2014 AI Setup (1/3)',
+        'LitGap \u2014 AI Setup (1/3)',
         'Choose your AI provider by typing one of the options below:\n\n' +
         '  anthropic  \u2192 Claude  (claude-haiku-4-5-20251001)\n' +
         '  openai     \u2192 GPT     (gpt-4o-mini)\n' +
         '  google     \u2192 Gemini  (gemini-1.5-flash)\n' +
         '  custom     \u2192 DeepSeek / Qwen / Kimi / Ollama / others\n\n' +
-        'Each analysis costs approximately $0.001 USD with the default model.',
+        'Conceptual Map uses 2 API calls (~$0.002).\n' +
+        'Conceptual Map + Field Map uses 4 API calls (~$0.004).',
         providerInput, null, {}
       );
 
@@ -406,10 +390,10 @@ var KGMMain = {
       const provider = providerInput.value.trim().toLowerCase();
 
       if (!['anthropic', 'openai', 'google', 'custom'].includes(provider)) {
-        ps.alert(null, 'LitGap KGM',
+        ps.alert(null, 'LitGap',
           `"${provider}" is not a valid provider.\n\n` +
           'Please type one of: anthropic / openai / google / custom');
-        continue; // re-show provider dialog
+        continue;
       }
 
       // ── 2. Custom base URL (only for custom provider) ───────────────────
@@ -420,7 +404,7 @@ var KGMMain = {
         const urlInput = { value: 'https://api.deepseek.com/v1' };
         const ok2 = ps.prompt(
           null,
-          'LitGap KGM \u2014 AI Setup (Custom Base URL)',
+          'LitGap \u2014 AI Setup (Custom Base URL)',
           'Enter the base URL of your OpenAI-compatible endpoint:\n\n' +
           'Presets:\n' +
           '  DeepSeek \u2192 https://api.deepseek.com/v1\n' +
@@ -438,15 +422,14 @@ var KGMMain = {
         customBaseUrl = urlInput.value.trim().replace(/\/$/, '');
 
         if (!customBaseUrl) {
-          ps.alert(null, 'LitGap KGM', 'Base URL cannot be empty. Please try again.');
+          ps.alert(null, 'LitGap', 'Base URL cannot be empty. Please try again.');
           continue;
         }
 
-        // Optional: custom model name
         const modelInput = { value: '' };
         const okModel = ps.prompt(
           null,
-          'LitGap KGM \u2014 AI Setup (Model Name)',
+          'LitGap \u2014 AI Setup (Model Name)',
           'Enter the model name to use (leave blank for default: gpt-4o-mini):\n\n' +
           'Examples: deepseek-chat, qwen-plus, moonshot-v1-8k',
           modelInput, null, {}
@@ -464,7 +447,7 @@ var KGMMain = {
       const keyInput = { value: '' };
       const ok3 = ps.prompt(
         null,
-        'LitGap KGM \u2014 AI Setup (2/3)',
+        'LitGap \u2014 AI Setup (2/3)',
         `Enter your ${provider} API key:\n\n` +
         '(Your key is stored securely in Zotero preferences and\n' +
         'never sent anywhere except the AI provider you selected.)',
@@ -479,20 +462,19 @@ var KGMMain = {
       const apiKey = keyInput.value.trim();
 
       if (!apiKey) {
-        ps.alert(null, 'LitGap KGM', 'API key cannot be empty. Please try again.');
+        ps.alert(null, 'LitGap', 'API key cannot be empty. Please try again.');
         continue;
       }
 
       // ── 4. Test connection ──────────────────────────────────────────────
-      ps.alert(null, 'LitGap KGM \u2014 AI Setup (3/3)',
+      ps.alert(null, 'LitGap \u2014 AI Setup (3/3)',
         'Testing connection to AI provider...\n\n' +
         '(Click OK to start the test)');
 
       const client = LitGap.AIClient.create(provider, apiKey, customModel, customBaseUrl);
 
-      // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
       if (LitGap.ProgressUI) {
-        LitGap.ProgressUI.show('LitGap KGM: Testing AI connection...');
+        LitGap.ProgressUI.show('LitGap: Testing AI connection...');
         LitGap.ProgressUI.update('Connecting to AI provider...', 50);
       }
 
@@ -501,9 +483,8 @@ var KGMMain = {
       if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
 
       if (connOk) {
-        // Save to Prefs and report success
         LitGap.AIClient.saveToPrefs(provider, apiKey, customModel, customBaseUrl);
-        ps.alert(null, 'LitGap KGM',
+        ps.alert(null, 'LitGap',
           '\u2713 Connection successful!\n\nSettings saved. Ready to analyze.');
         Zotero.debug(`[KGMMain] AI setup complete: provider=${provider}`);
         return client;
@@ -523,7 +504,7 @@ var KGMMain = {
 
       const retryResult = Services.prompt.confirmEx(
         null,
-        'LitGap KGM \u2014 Connection Failed',
+        'LitGap \u2014 Connection Failed',
         failMsg + '\n\nWhat would you like to do?',
         (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0) +
         (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_1) +
@@ -535,12 +516,10 @@ var KGMMain = {
       );
 
       if (retryResult === 0) {
-        // Retry with same settings — re-test without re-entering
-        Zotero.debug('[KGMMain] AI setup: retrying connection with same settings');
+        Zotero.debug('[KGMMain] AI setup: retrying with same settings');
 
-        // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
         if (LitGap.ProgressUI) {
-          LitGap.ProgressUI.show('LitGap KGM: Retrying connection...');
+          LitGap.ProgressUI.show('LitGap: Retrying connection...');
           LitGap.ProgressUI.update('Connecting to AI provider...', 50);
         }
 
@@ -550,22 +529,18 @@ var KGMMain = {
 
         if (retryOk) {
           LitGap.AIClient.saveToPrefs(provider, apiKey, customModel, customBaseUrl);
-          ps.alert(null, 'LitGap KGM', '\u2713 Connection successful!\n\nSettings saved.');
+          ps.alert(null, 'LitGap', '\u2713 Connection successful!\n\nSettings saved.');
           return client;
         }
 
-        ps.alert(null, 'LitGap KGM',
+        ps.alert(null, 'LitGap',
           'Connection still failing.\n\nReturning to settings to let you make changes.');
-        // Fall through to top of while loop (change settings)
         continue;
 
       } else if (retryResult === 1) {
-        // Change settings — loop back to provider selection
         Zotero.debug('[KGMMain] AI setup: user chose to change settings');
         continue;
-
       } else {
-        // Cancel
         Zotero.debug('[KGMMain] AI setup: user cancelled after connection failure');
         return null;
       }
@@ -580,14 +555,13 @@ var KGMMain = {
    *
    * @param {{ allTitles: string[] }} libraryData
    * @param {Object} aiClient
-   * @returns {Promise<string|null>} Confirmed domain string, or null if cancelled
+   * @returns {Promise<string|null>}
    */
   _confirmTopic: async function(libraryData, aiClient) {
     Zotero.debug('[KGMMain] Detecting research topic...');
 
-    // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
     if (LitGap.ProgressUI) {
-      LitGap.ProgressUI.show('LitGap KGM: Detecting research area...');
+      LitGap.ProgressUI.show('LitGap: Detecting research area...');
       LitGap.ProgressUI.update('Analyzing your paper titles...', 30);
     }
 
@@ -598,21 +572,21 @@ var KGMMain = {
       Zotero.debug(`[KGMMain] Topic detected: "${detectedTopic}"`);
     } catch (e) {
       Zotero.debug(`[KGMMain] Topic detection failed: ${e.message}`);
-      detectedTopic = null; // fall through to manual input
+      detectedTopic = null;
     } finally {
       if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
     }
 
     // ── AI detection failed → manual input ──────────────────────────────────
     if (!detectedTopic) {
-      Services.prompt.alert(null, 'LitGap KGM',
+      Services.prompt.alert(null, 'LitGap',
         'Could not automatically detect your research area.\n\n' +
         'Please enter it manually in the next dialog.');
 
       const manualInput = { value: '' };
       const okManual = Services.prompt.prompt(
         null,
-        'LitGap KGM \u2014 Research Area',
+        'LitGap \u2014 Research Area',
         'Enter your research area (one sentence):\n\n' +
         'Example: "Machine learning applications in clinical genomics"',
         manualInput, null, {}
@@ -629,7 +603,7 @@ var KGMMain = {
     // ── Confirmation dialog ──────────────────────────────────────────────────
     const topicResult = Services.prompt.confirmEx(
       null,
-      'LitGap KGM \u2014 Research Area',
+      'LitGap \u2014 Research Area',
       'LitGap identified your research area as:\n\n' +
       `"${detectedTopic}"\n\n` +
       'Is this correct?',
@@ -642,15 +616,13 @@ var KGMMain = {
       null, {}
     );
 
-    if (topicResult === 0) {
-      return detectedTopic;
-    }
+    if (topicResult === 0) return detectedTopic;
 
     if (topicResult === 1) {
       const editInput = { value: detectedTopic };
       const okEdit = Services.prompt.prompt(
         null,
-        'LitGap KGM \u2014 Edit Research Area',
+        'LitGap \u2014 Edit Research Area',
         'Edit your research area:',
         editInput, null, {}
       );
@@ -663,31 +635,79 @@ var KGMMain = {
       return editInput.value.trim();
     }
 
-    // topicResult === 2 or -1 → Cancel
     Zotero.debug('[KGMMain] Topic: user cancelled confirmation');
     return null;
   },
-
-  // ─── Step 4: Run KGM analysis ────────────────────────────────────────────────
+// ─── Step 4: Choose outputs ──────────────────────────────────────────────────
 
   /**
-   * Run the two-step KGM analysis with ProgressUI feedback.
-   * Throws handled errors up to run() only for truly unexpected failures;
-   * known API errors are caught here and re-thrown with user-friendly handling.
+   * Show output selection dialog.
+   *
+   * Button layout (left → right on macOS):
+   *   Button 2 / result -1 = Cancel         (leftmost / window close)
+   *   Button 1 / result 1  = Conceptual Map only  (centre)
+   *   Button 0 / result 0  = Conceptual Map + Field Map  (right, blue default)
+   *
+   * Returns:
+   *   'both'        — result 0
+   *   'conceptual'  — result 1
+   *   null          — result 2 / -1 (Cancel)
+   *
+   * Note: Field Map always runs Step A (framework) internally because FM-A
+   * depends on framework output. 'conceptual' skips FM-A + FM-B only.
+   */
+  _chooseOutputs: function() {
+    const result = Services.prompt.confirmEx(
+      null,
+      'LitGap \u2014 Choose Output',
+      'What would you like to generate?\n\n' +
+      '\uD83D\uDDFA\uFE0F  Conceptual Map\n' +
+      '     Technical dimensions and knowledge gaps in your field\n' +
+      '     (2 API calls)\n\n' +
+      '\uD83C\uDF10  Conceptual Map + Field Map\n' +
+      '     Full analysis: dimensions, debates, node relationships,\n' +
+      '     foundational papers, and priority reading list\n' +
+      '     (4 API calls)',
+      (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0) +
+      (Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_1) +
+      (Services.prompt.BUTTON_TITLE_CANCEL   * Services.prompt.BUTTON_POS_2),
+      '\u2728 Conceptual Map + Field Map',  // 0 — right, blue default
+      '\uD83D\uDDFA\uFE0F Conceptual Map only',    // 1 — centre
+      null,                                          // 2 = Cancel — left
+      null, {}
+    );
+
+    if (result === 2 || result === -1) {
+      Zotero.debug('[KGMMain] Output choice: cancelled');
+      return null;
+    }
+
+    const choice = result === 0 ? 'both' : 'conceptual';
+    Zotero.debug(`[KGMMain] Output choice: result=${result} → ${choice}`);
+    return choice;
+  },
+
+  // ─── Step 5: Run analysis ────────────────────────────────────────────────────
+
+  /**
+   * Run AI analysis steps with ProgressUI feedback.
+   * Delegates to KGMAnalyzer.runAnalysis() with includeFieldMap flag.
    *
    * @param {{ allTitles, topAbstracts }} libraryData
    * @param {Array<{title, mentionCount}>} missingPapers
    * @param {string} confirmedDomain
    * @param {Object} aiClient
-   * @returns {Promise<{ framework: string, gapAnalysis: string }>}
+   * @param {boolean} includeFieldMap
+   * @returns {Promise<{ framework, gapAnalysis, fieldMap? }|null>}
    */
-  _runKGMAnalysis: async function(libraryData, missingPapers, confirmedDomain, aiClient) {
-    Zotero.debug('[KGMMain] Starting KGM analysis...');
+  _runAnalysis: async function(libraryData, missingPapers, confirmedDomain, aiClient, includeFieldMap) {
+    Zotero.debug(`[KGMMain] Starting analysis (includeFieldMap=${includeFieldMap})...`);
 
-    // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
+    const totalSteps = includeFieldMap ? 4 : 2;
+
     if (LitGap.ProgressUI) {
-      LitGap.ProgressUI.show('LitGap KGM: Analyzing Knowledge Gaps...');
-      LitGap.ProgressUI.update('Step 1/2: Generating domain framework...', 10);
+      LitGap.ProgressUI.show('LitGap: Analyzing your research field...');
+      LitGap.ProgressUI.update(`Step 1/${totalSteps}: Generating domain framework...`, 10);
     }
 
     try {
@@ -696,72 +716,68 @@ var KGMMain = {
         missingPapers,
         confirmedDomain,
         aiClient,
-        (step, totalSteps, message) => {
+        (step, total, message) => {
           if (LitGap.ProgressUI) {
-            // Map step progress to 10–85% range
-            const pct = Math.round(10 + (step / totalSteps) * 75);
-            LitGap.ProgressUI.update(
-              `Step ${step}/${totalSteps}: ${message}`,
-              pct
-            );
+            const pct = Math.round(10 + (step / total) * 75);
+            LitGap.ProgressUI.update(`Step ${step}/${total}: ${message}`, pct);
           }
-        }
+        },
+        { includeFieldMap }
       );
 
-      Zotero.debug('[KGMMain] KGM analysis complete');
+      Zotero.debug('[KGMMain] Analysis complete');
       return result;
 
     } catch (e) {
-      // Map known API errors to user-friendly messages
       if (e.message === 'INVALID_KEY') {
         LitGap.AIClient.clearApiKey();
-        Services.prompt.alert(null, 'LitGap KGM',
+        Services.prompt.alert(null, 'LitGap',
           'Invalid API key.\n\n' +
-          'Your saved key has been cleared. Please restart KGM analysis\n' +
+          'Your saved key has been cleared. Please restart the analysis\n' +
           'to enter a new key.');
       } else if (e.message === 'RATE_LIMIT') {
-        Services.prompt.alert(null, 'LitGap KGM',
+        Services.prompt.alert(null, 'LitGap',
           'Rate limit reached.\n\n' +
           'The AI provider is temporarily limiting requests.\n' +
           'Please wait a minute and try again.');
       } else if (e.message === 'NETWORK_ERROR') {
-        Services.prompt.alert(null, 'LitGap KGM',
+        Services.prompt.alert(null, 'LitGap',
           'Network connection failed.\n\n' +
           'Please check your internet connection and try again.');
       } else {
-        Services.prompt.alert(null, 'LitGap KGM',
-          `KGM analysis failed:\n${e.message}\n\n` +
+        Services.prompt.alert(null, 'LitGap',
+          `Analysis failed:\n${e.message}\n\n` +
           'Check Help > Debug Output Logging for details.');
         Zotero.logError(e);
       }
 
-      // Re-throw a sentinel so run()'s outer catch does NOT show a second dialog
       throw new _KGMHandledError(e.message);
     }
   },
 
-  // ─── Step 5: Save reports ────────────────────────────────────────────────────
+  // ─── Step 6: Save reports ────────────────────────────────────────────────────
 
   /**
-   * Generate KGM reports and save via File Picker.
-   * Saves both .md and .html to the same directory.
+   * Generate and save report files based on the user's output choice.
+   * Saves to user-chosen base path via a single File Picker.
+   *
+   * Files saved:
+   *   'conceptual' → conceptual-map_NAME_DATE.md + .html
+   *   'fieldmap'   → field-map_NAME_DATE.md + .html
+   *   'both'       → both pairs of files
    *
    * @param {Zotero.Collection} collection
    * @param {{ allTitles, topAbstracts }} libraryData
    * @param {Array<{title, mentionCount}>} missingPapers
-   * @param {string} framework    — Step A AI output
-   * @param {string} gapAnalysis  — Step B AI output
+   * @param {{ framework, gapAnalysis, fieldMap? }} results
    * @param {Object} aiClient
+   * @param {string} outputChoice  — 'conceptual' | 'fieldmap' | 'both'
    */
-  _saveReports: async function(
-    collection, libraryData, missingPapers, framework, gapAnalysis, aiClient
-  ) {
-    // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
+  _saveReports: async function(collection, libraryData, missingPapers, results, aiClient, outputChoice) {
     if (LitGap.ProgressUI) {
       LitGap.ProgressUI.update('Generating reports...', 90);
     }
 
-    // Resolve human-readable provider name for the report header
     const providerDisplayNames = {
       anthropic: 'Anthropic Claude',
       openai:    'OpenAI GPT',
@@ -771,68 +787,107 @@ var KGMMain = {
       ? 'Custom AI'
       : (providerDisplayNames[aiClient.provider] || aiClient.provider);
 
-    const { markdown, html } = LitGap.KGMReporter.generate(
-      collection.name,
-      libraryData,
-      missingPapers,
-      framework,
-      gapAnalysis,
-      providerName
-    );
-
-    // ── File Picker ──────────────────────────────────────────────────────────
-    const win  = Zotero.getMainWindow();
-    const fp   = Components.classes['@mozilla.org/filepicker;1']
-                   .createInstance(Components.interfaces.nsIFilePicker);
-
     const safeName = collection.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
-    fp.init(win.browsingContext, 'Save KGM Report', fp.modeSave);
+    // ── Generate report content ──────────────────────────────────────────────
+    let conceptualReports = null;
+    let fieldMapReports   = null;
+
+    if (true) {
+      conceptualReports = LitGap.KGMReporter.generate(
+        collection.name, libraryData, missingPapers,
+        results.framework, results.gapAnalysis, providerName
+      );
+    }
+
+    if (outputChoice ===  'both' && results.fieldMap) {
+      fieldMapReports = LitGap.KGMReporter.generateFieldMap(
+        collection.name, results.fieldMap, providerName
+      );
+    }
+
+    // ── File Picker — ask for save location ──────────────────────────────────
+    const win = Zotero.getMainWindow();
+    const fp  = Components.classes['@mozilla.org/filepicker;1']
+                  .createInstance(Components.interfaces.nsIFilePicker);
+
+    // Default filename based on what's being saved
+    let defaultName;
+    if (outputChoice === 'conceptual') {
+      defaultName = `conceptual-map_${safeName}_${dateStr}.md`;
+    } else if (outputChoice === 'fieldmap') {
+      defaultName = `field-map_${safeName}_${dateStr}.md`;
+    } else {
+      defaultName = `conceptual-map_${safeName}_${dateStr}.md`;
+    }
+
+    fp.init(win.browsingContext, 'Save Reports', fp.modeSave);
     fp.appendFilter('Markdown Files', '*.md');
-    fp.defaultString    = `kgm_${safeName}_${dateStr}.md`;
+    fp.defaultString    = defaultName;
     fp.defaultExtension = 'md';
 
     const rv = await new Promise(resolve => fp.open(r => resolve(r)));
 
     if (rv !== fp.returnOK && rv !== fp.returnReplace) {
       Zotero.debug('[KGMMain] Save reports: user cancelled file picker');
-      // Silently return — finally block will hide ProgressUI
       return;
     }
 
-    const mdPath   = fp.file.path;
-    const htmlPath = mdPath.replace(/\.md$/, '.html');
+    // Derive base directory from the chosen path
+    const chosenPath = fp.file.path;
+    const dir        = chosenPath.substring(0, chosenPath.lastIndexOf(
+      (chosenPath.includes('/') ? '/' : '\\')
+    ) + 1);
+
+    // ── Write files ───────────────────────────────────────────────────────────
+    const savedFiles = [];
 
     try {
-      await IOUtils.writeUTF8(mdPath,   markdown);
-      await IOUtils.writeUTF8(htmlPath, html);
-      Zotero.debug(`[KGMMain] Reports saved: ${mdPath}`);
+      if (conceptualReports) {
+        const cmMd   = dir + `conceptual-map_${safeName}_${dateStr}.md`;
+        const cmHtml = dir + `conceptual-map_${safeName}_${dateStr}.html`;
+        await IOUtils.writeUTF8(cmMd,   conceptualReports.markdown);
+        await IOUtils.writeUTF8(cmHtml, conceptualReports.html);
+        savedFiles.push(cmMd, cmHtml);
+        Zotero.debug(`[KGMMain] Conceptual Map saved: ${cmMd}`);
+      }
+
+      if (fieldMapReports) {
+        const fmMd   = dir + `field-map_${safeName}_${dateStr}.md`;
+        const fmHtml = dir + `field-map_${safeName}_${dateStr}.html`;
+        await IOUtils.writeUTF8(fmMd,   fieldMapReports.markdown);
+        await IOUtils.writeUTF8(fmHtml, fieldMapReports.html);
+        savedFiles.push(fmMd, fmHtml);
+        Zotero.debug(`[KGMMain] Field Map saved: ${fmMd}`);
+      }
     } catch (e) {
-      Services.prompt.alert(null, 'LitGap KGM',
-        `Failed to save reports:\n${e.message}`);
+      Services.prompt.alert(null, 'LitGap', `Failed to save reports:\n${e.message}`);
       return;
     }
 
-    // ── Show completion ──────────────────────────────────────────────────────
-    // v2.0.1: LitGap.ProgressUI instead of bare ProgressUI
+    // ── Show completion ───────────────────────────────────────────────────────
+    const fileList = savedFiles
+      .filter(f => f.endsWith('.html'))
+      .map(f => '\u2022 ' + f.split(/[/\\]/).pop())
+      .join('\n');
+
+    const completionMsg =
+      '\u2713 Analysis complete!\n\n' +
+      'Reports saved:\n' + fileList + '\n\n' +
+      'Open the .html files in your browser to read the reports.';
+
     if (LitGap.ProgressUI) {
-      LitGap.ProgressUI.showComplete(
-        '\u2713 KGM Analysis complete!\n' +
-        'Reports saved \u2014 open the .html file to read your Knowledge Gap Map.'
-      );
-      // showComplete auto-hides after 5s; finally block hide() is a safe no-op
+      LitGap.ProgressUI.showComplete(completionMsg);
     } else {
-      Services.prompt.alert(null, 'LitGap KGM \u2014 Complete!',
-        '\u2713 KGM Analysis complete!\n\n' +
-        `Saved to:\n${mdPath}\n\nOpen the .html file to read your Knowledge Gap Map.`);
+      Services.prompt.alert(null, 'LitGap \u2014 Complete!', completionMsg);
     }
   }
 
 };
 
 // ─── Internal sentinel error class ──────────────────────────────────────────
-// Used to signal that _runKGMAnalysis already displayed an error dialog,
+// Used to signal that _runAnalysis already displayed an error dialog,
 // so the outer catch in run() should NOT show a second dialog.
 function _KGMHandledError(originalMessage) {
   this.message = `[already handled] ${originalMessage}`;
@@ -840,4 +895,4 @@ function _KGMHandledError(originalMessage) {
 }
 _KGMHandledError.prototype = Object.create(Error.prototype);
 
-Zotero.debug('LitGap: KGMMain loaded');
+Zotero.debug('LitGap: KGMMain v3.0 loaded');

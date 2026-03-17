@@ -1,122 +1,64 @@
-# LitGap - Discover What You're Missing in Your Research
+# LitGap - Find Hidden Papers in Your Zotero Library
 
-**Version**: 2.0.0  
+**Version**: 3.0.0  
 **Status**: Stable ✅
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zotero](https://img.shields.io/badge/Zotero-7.0+-red.svg)](https://www.zotero.org/)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/Yu-TingSun/litgap/releases)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/Yu-TingSun/litgap/releases)
 
-> A Zotero plugin that finds the papers you haven't read but should have — then uses AI to map the conceptual gaps in your research knowledge.
+> A Zotero plugin with two complementary features: find hidden papers through citation network analysis, and map your research field with AI-powered conceptual and problem-oriented analysis.
 
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Best Practices](#best-practices) • [Limitations](#limitations) • [How It Works](#how-it-works) • [Support](#support)
-
----
-
-## 📸 Preview
-
-<div align="center">
-
-**🎬 See LitGap in Action**
-
-| Step | Description |
-|------|-------------|
-| 1️⃣ | Right-click any collection → Select "Find Hidden Papers" |
-| 2️⃣ | Review collection stats and confirm analysis |
-| 3️⃣ | Wait 1-3 minutes while LitGap analyzes citation networks |
-| 4️⃣ | Save Markdown + HTML reports — see what you've been missing |
-| 5️⃣ | Continue to KGM → AI maps your knowledge framework and conceptual gaps |
-| 6️⃣ | Copy AI-suggested questions → explore your gaps with any AI assistant |
-
-📷 *Screenshots will be added soon. The plugin is fully functional.*
-
-**Quick Demo**: [Watch a 2-minute walkthrough →](https://github.com/Yu-TingSun/litgap/wiki/Demo) *(Coming soon)*
-
-</div>
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Example Output](#example-output) • [Best Practices](#best-practices) • [Limitations](#limitations) • [How It Works](#how-it-works) • [Support](#support)
 
 ---
 
 ## 🎯 What is LitGap?
 
-Most researchers have two blind spots they don't know about:
+LitGap provides two features accessible from the right-click menu on any Zotero collection:
 
-- **Hidden papers**: Important papers that appear repeatedly in the bibliographies of what you've already read — but you haven't read them yourself.
-- **Conceptual gaps**: Whole areas of your field that you've never systematically thought about, because no one told you they existed.
+### 🔍 Find Hidden Papers
+Analyzes citation networks to identify **papers you haven't read** that are frequently cited by papers already in your library.
 
-LitGap addresses both in a connected two-step workflow:
+**Think of it as**: "Papers that appear in multiple bibliographies of what you've already read, but you haven't read yourself."
 
-**Step 1 — Find Hidden Papers** uses citation network analysis to surface the papers your field keeps citing that aren't in your Zotero library yet. It queries the Semantic Scholar API, scores each candidate by how many of *your* papers cite it, and delivers a ranked list with direct links.
+### 🗺️ Map Your Research Field
+Uses AI to generate two complementary outputs from your library:
 
-**Step 2 — Knowledge Gap Mapping (KGM)** takes those results further. It sends your library and missing papers to an AI, which first constructs a *Domain Knowledge Framework* — a structured map of how your field is organized — then identifies *Conceptual Gaps*: the areas and questions that your reading hasn't covered, and why they matter. Each gap comes with a ready-to-copy question for any AI assistant.
+**Conceptual Map** — answers "what does this field cover?"
+- Technical dimensions of the field with key concepts
+- Knowledge gaps relative to your library
+- Stance annotations showing which missing papers support which positions
+- Copy-pasteable prompts for further AI-assisted exploration
 
-Together, they answer the question researchers rarely think to ask: **"What don't I know that I don't know?"**
-
-### Quick Example
-
-You have 50 papers on DNA repair. Here's what LitGap delivers:
-
-**After Step 1 — Find Hidden Papers:**
-- Paper A: Cited by 8 of your papers ⭐ → you've never read it
-- Paper B: Cited by 5 of your papers ⭐ → not in your library
-- Paper C: Cited by 3 of your papers → worth a look
-
-**After Step 2 — KGM Analysis:**
-```
-Domain Knowledge Framework
-├── DNA Damage Recognition (well covered in your library)
-├── Repair Pathway Selection (partially covered)
-└── Chromatin Remodeling During Repair ← GAP DETECTED
-
-Conceptual Gap: Your library lacks papers on how chromatin
-structure influences repair pathway choice.
-
-Missing papers linked to this gap:
-  • Paper A — "Chromatin remodeling at DSB sites" (cited by 8)
-  • Paper B — "Histone modification and repair fidelity" (cited by 5)
-
-Suggested question for your AI assistant:
-  "How does chromatin compaction affect the balance between
-   NHEJ and HR repair pathway selection in mammalian cells?"
-```
-
-→ **Now you know not just *what* you're missing, but *why* it matters.**
+**Field Map** — answers "what is this field debating?"
+- Core research questions reframed as biological/scientific problems
+- For each question: debate structure (Position A vs B), gap classification, foundational papers, suggested reading
+- Priority reading list based on your largest knowledge gaps
+- Node relationship graph with layered layout
+- Mermaid diagram for Obsidian export
 
 ---
 
 ## ✨ Features
 
-### 🔍 Feature 1: Find Hidden Papers
-- Analyzes citation networks via Semantic Scholar API
+### 🔍 Find Hidden Papers
+- Analyzes citation networks via Semantic Scholar API (free, no key required)
 - Identifies papers cited by multiple sources in your library
 - Filters by publication year, citation count, and mention frequency
-- Real-time floating progress bar during analysis (non-blocking)
+- Outputs `litgap_*.md` and `.html`
 
-### 🧠 Feature 2: Knowledge Gap Mapping (KGM) — New in v2.0
-- AI-powered conceptual gap analysis using your LitGap results
-- **Domain Knowledge Framework**: AI maps out how your field is structured
-- **Conceptual Gap Analysis**: Identifies what you might be missing and why it matters
-- **Suggested questions**: Copy-ready prompts for further AI-assisted exploration
-- Supports multiple AI providers: Anthropic Claude, OpenAI GPT, Google Gemini, and custom endpoints (DeepSeek, Qwen, Kimi, Ollama)
-- Saves `kgm_*.md` + `kgm_*.html` reports
+### 🗺️ Map Your Research Field
+- AI-powered analysis using your choice of provider (Anthropic Claude, OpenAI GPT, Google Gemini, or custom endpoint)
+- Generates Conceptual Map and/or Field Map in a single run
+- Conceptual Map includes stance annotations and copy-pasteable AI prompts
+- Field Map includes interactive node cards, SVG relationship graph, foundational papers, and priority reading list
+- Mermaid diagram in markdown for Obsidian export
+- All outputs in English
 
-### 📊 Intelligent Scoring
-- **Mention frequency** (highest weight): How many of your papers cite it
-- **Academic impact**: Total citation count
-- **Recency bonus**: Recent papers get priority
-
-### 📝 Beautiful Reports
-- **Markdown** (.md): Plain text, editable, version-control friendly
-- **HTML** (.html): Interactive with clickable links
-
-### 🔗 One-Click Access
-- **DOI links**: Direct access to papers
-- **Semantic Scholar**: View full citation context
-- **Google Scholar**: Backup search option
-
-### 🎨 Professional Output
-- Responsive design (mobile/tablet/desktop)
-- Print-friendly formatting
-- Clear visual hierarchy
+### 📝 Report Formats
+- **Markdown** (.md): Plain text, editable, Obsidian-compatible
+- **HTML** (.html): Interactive, opens in any browser, no internet required after generation
 
 ---
 
@@ -124,8 +66,9 @@ Suggested question for your AI assistant:
 
 ### Prerequisites
 - **Zotero 7.0 or later** ([Download](https://www.zotero.org/download/))
-- Papers with DOIs in your library
+- Papers with DOIs in your library (for Find Hidden Papers)
 - Internet connection
+- An AI API key (for Map Your Research Field): Anthropic, OpenAI, Google, or a compatible custom endpoint
 
 ### Steps
 
@@ -139,731 +82,313 @@ Suggested question for your AI assistant:
    ```
 
 3. **Restart Zotero**
-   - Close Zotero completely
-   - Reopen and you're ready!
 
 ### Verification
 
-Right-click any collection → Should see **"Find Hidden Papers"** option ✓
+Right-click any collection → Should see:
+- **"Find Hidden Papers"**
+- **"Map Your Research Field"**
+- **"Reset LitGap Preferences..."**
 
 ---
 
 ## 🚀 Usage
 
-### Basic Workflow
-
-1. **Select a Collection**
-   - Right-click on any collection in Zotero
-   - Choose **"Find Hidden Papers"**
-
-2. **Confirm Analysis**
-   ```
-   Collection: Machine Learning Papers
-   Total papers: 50
-   Papers with DOI: 45
-   
-   Will process: 45 papers
-   Estimated time: ~2 minutes
-   
-   Continue?
-   ```
-
-3. **Wait for Analysis**
-   - Progress window shows real-time updates
-   - ~1-2 minutes for 20-50 papers
-
-4. **Save Report**
-   - Two files automatically generated:
-     - `litgap_collection_2026-01-22.md` (Markdown)
-     - `litgap_collection_2026-01-22.html` (HTML)
-
-5. **Review Recommendations**
-   - Open HTML file in browser
-   - Click DOI/Scholar links to access papers
-   - Add interesting papers to Zotero
-
----
-
-## 📖 Understanding the Report
-
-### Report Structure
-
-```
-🔬 LitGap Analysis Report
-
-📊 Your Library Overview
-├─ Papers analyzed: 50
-├─ With DOI: 45 (90%)
-└─ Citations analyzed: 2,500 unique papers
-
-🎯 Recommended Papers (Knowledge Gaps)
-
-📌 Priority Reading (Top 3 + Early Influential)
-├─ 1. Paper Title (Score: 58.0/100)
-│   ├─ Cited by 5 of your papers
-│   ├─ 1,000 total citations
-│   └─ 📄 DOI | 🔍 Scholar | 🔎 Google
-├─ 2. Another Paper (Score: 35.0/100)
-└─ ...
-
-📖 Recommended Reading (Remaining)
-└─ 4. More Papers...
-
-📘 About This Report
-└─ Methodology and reading suggestions
-```
-
-### Score Breakdown
-
-**Total Score** = Mention Score + Impact Score + Recency Score
-
-| Component | Weight | Max Points | Example |
-|-----------|--------|------------|---------|
-| Mentions | Highest | Unlimited | 5 papers × 10 = 50 pts |
-| Citations | Medium | 5 | 500 cites ÷ 100 = 5 pts |
-| Recency | Bonus | 3 | 2023-2026 = 3 pts |
-
-**Example**:
-- Paper cited by 5 of your papers: **50 points**
-- 500 total citations: **5 points**
-- Published in 2024: **3 points**
-- **Total: 58 points** ⭐
-
----
-
-## 🎓 Use Cases
-
-### For Researchers
-- **Literature review**: Find papers you might have missed, then map the conceptual structure of your field
-- **Grant writing**: Identify foundational works and demonstrate comprehensive field knowledge
-- **Paper writing**: Complete your bibliography and understand how your contribution fits the landscape
-
-### For Students
-- **Thesis preparation**: Surface missing references AND understand the knowledge framework of your field
-- **New topic entry**: Start with 10-15 review papers → LitGap + KGM builds your mental map fast
-- **Reading list**: Prioritized recommendations with AI-generated context for why each gap matters
-
-### For Librarians
-- **Collection development**: Identify important acquisitions with citation evidence
-- **Subject expertise**: Stay current and understand structural gaps in a field
-
----
-
-## 🔧 How It Works
-
 ### Feature 1: Find Hidden Papers
 
-#### 1. Parse Your Library
-```
-Papers in collection
-  → Filter: Academic papers only
-  → Extract: DOI, title, authors, year
-  → Result: List of papers to analyze
-```
+1. Right-click a collection → **"Find Hidden Papers"**
+2. Wait ~1-3 minutes while LitGap queries Semantic Scholar
+3. Save the report — two files generated:
+   - `litgap_collection_date.md`
+   - `litgap_collection_date.html`
+4. Open the HTML file in your browser, click DOI links to access papers
 
-#### 2. Fetch Citation Data
-```
-For each paper with DOI:
-  → Query: Semantic Scholar API
-  → Collect: All papers that cite this work
-  → Result: Complete citation network
-```
+### Feature 2: Map Your Research Field
 
-#### 3. Find Knowledge Gaps
-```
-All citations
-  → Remove: Papers you already have
-  → Filter: Year ≥ 2010, Mentioned ≥ 2 times
-  → Calculate: Scores (mention + impact + recency)
-  → Sort: By total score (descending)
-  → Result: Top 10 recommendations
-```
+1. Right-click a collection → **"Map Your Research Field"**
 
-#### 4. Generate Reports
-```
-Recommendations
-  → Format: Markdown + HTML
-  → Add: DOI/Scholar/Google links
-  → Style: Professional, responsive design
-  → Save: litgap_*.md + litgap_*.html
-```
+2. **Load or run Find Hidden Papers** — the map analysis needs the hidden papers list as input. You can load an existing `litgap_*.md` report or run Find Hidden Papers now.
+
+3. **Set up AI provider** (first time only) — enter your API key and choose a provider. LitGap saves your settings for future runs.
+   ```
+   Providers:
+     anthropic  → Claude  (claude-haiku-4-5-20251001)
+     openai     → GPT     (gpt-4o-mini)
+     google     → Gemini  (gemini-1.5-flash)
+     custom     → DeepSeek / Qwen / Kimi / Ollama / others
+   ```
+
+4. **Confirm your research area** — LitGap detects it automatically, you can edit if needed.
+
+5. **Choose output**:
+   - **Conceptual Map only** — 2 API calls (~$0.002 with default model)
+   - **Conceptual Map + Field Map** (recommended) — 4 API calls (~$0.004 with default model)
+
+6. **Save reports** — all files go to the same directory:
+   - `conceptual-map_collection_date.md` + `.html`
+   - `field-map_collection_date.md` + `.html` (if Field Map selected)
 
 ---
 
-### Feature 2: Knowledge Gap Mapping (KGM)
+## 📖 Understanding the Reports
 
-#### 5. Build Domain Framework (Step A)
-```
-Your library titles + missing papers
-  → Send to AI (Claude / GPT / Gemini / custom)
-  → AI constructs: Domain Knowledge Framework
-  → Output: Structured map of your research field
-```
+### Source Annotations
 
-#### 6. Identify Conceptual Gaps (Step B)
-```
-Framework + missing papers
-  → AI cross-references: what's covered vs. what's absent
-  → Output per gap:
-      • Gap description and why it matters
-      • Missing papers linked to this gap
-      • Copy-ready question for AI-assisted exploration
-  → Save: kgm_*.md + kgm_*.html
-```
+All AI-generated content is annotated by evidence source:
+
+| Tag | Meaning |
+|-----|---------|
+| `[User Library]` | Supported by papers in your Zotero collection |
+| `[AI Inferred — verify]` | Based on AI training knowledge, not verified against your library |
+| `[Confirmed]` | Manually confirmed by you (edit the md file to upgrade) |
+
+### Conceptual Map
+
+Generated in two AI steps:
+
+**Domain Knowledge Framework**: 5-8 technical dimensions of your field, each with description and key concepts.
+
+**Conceptual Gap Analysis**: 3-5 gaps relative to the framework and your library. Each gap includes why it matters, what you likely don't know, stance annotation for missing papers, and a copy-pasteable prompt for further AI exploration.
+
+### Field Map
+
+**Core Research Questions**: 3-5 problems extracted from the technical dimensions.
+
+**Field Narrative**: Three-paragraph narrative — why the sub-field exists, the causal chain, and what the community is chasing.
+
+**Node Relationship Graph**: SVG diagram with layered layout. Nodes coloured by status (🟡 Open / 🟢 Settled / 🔵 Emerging / 🔴 Gap). Hover over edges to read relationship labels. Click a node to jump to its card.
+
+**Problem Node Map**: Expandable cards, one per core question. Each card contains debate structure (Position A vs B with source annotation), knowledge gaps (📚 library gap vs 🔴 field boundary), node links, suggested reading, and foundational papers.
+
+**Priority Reading**: Top 2-3 papers to read first, with rationale explaining which gap they address.
+
+**Mermaid Diagram**: Copy into Obsidian or any Mermaid-compatible tool.
 
 ---
 
-## 📊 Sample Results
+## 🔬 Example Output
 
-### Input
-- **50 papers** on DNA repair mechanisms
-- **45 with DOI** (90% coverage)
-- **2,500 citations** collected
+The following example is from a real Chromatin biophysics library (43 papers, 10 hidden papers identified by Find Hidden Papers, powered by Anthropic Claude Haiku).
 
-### Output
-- **15 recommendations** found
-- **Top 3 papers**:
-  1. "Structural mechanism of RecA" (58.0 pts) - cited by 5 papers
-  2. "DNA calorimetry methods" (35.0 pts) - cited by 3 papers
-  3. "Homologous recombination" (32.5 pts) - cited by 3 papers
+### Conceptual Map — Domain Knowledge Framework (excerpt)
 
-### Time
-- **2 minutes** for complete analysis
-- **~10x faster** than manual search
+From a 43-paper chromatin biophysics library, LitGap identified 8 technical dimensions including:
+
+1. **Single-Molecule Characterization Techniques** — AFM, optical tweezers, single-molecule FRET, super-resolution microscopy
+2. **Nucleosome Assembly and Stability** — DNA-histone interactions, octamer-DNA binding affinity, nucleosome positioning
+3. **Chromatin Dynamics and Remodeling** — ATP-dependent remodeling complexes, nucleosome sliding, histone exchange
+4. **Histone Modifications and Epigenetic Regulation** — PTM patterns, reader protein recruitment, epigenetic inheritance
+5. **Higher-Order Chromatin Organization** — phase separation, polymer physics, loop extrusion, TADs
+
+### Field Map — Core Research Questions
+
+The same library produced 4 core research questions:
+
+1. *How do nucleosomes dynamically unwrap, slide, and reposition in response to cellular signals, and what are the complete kinetic pathways and rate-limiting steps governing these structural transitions across biologically relevant timescales?*
+
+2. *What is the mechanistic relationship between histone chemical modifications, nucleosome stability, and chromatin accessibility in controlling transcriptional regulation, and how do these regulatory layers integrate to establish and maintain cell-type-specific gene expression programs?*
+
+3. *How do nucleosomes and chromatin fibers self-organize into higher-order structures and phase-separated domains, and what physical principles govern the transition between different chromatin states?*
+
+4. *How do the mechanical properties of chromatin—revealed through single-molecule force measurements—relate to the physical manipulation of chromatin during DNA replication, transcription, mitosis, and DNA damage repair?*
+
+### Field Map — Sample Node (Nucleosome unwrapping kinetics)
+
+```
+Status: Open
+
+Core dispute: Are nucleosome unwrapping pathways dominated by single
+rate-limiting steps or do multiple competing kinetic routes operate
+in parallel depending on cellular context?
+
+Position A [AI Inferred — verify]
+  Single or dual-pathway model with identifiable rate-limiting steps
+  (DNA peeling from histone octamer edges, linker extrusion).
+
+Position B [AI Inferred — verify]
+  Heterogeneous ensemble process with context-dependent pathway
+  selection influenced by PTMs, linker histones, and nuclear crowding.
+
+Library gap: Limited direct measurement of unwrapping kinetics in
+  crowded nuclear-like environments.
+Field boundary: Cannot simultaneously resolve DNA peeling dynamics
+  with atomic-scale histone–DNA contact breaking in living cells.
+```
+
+### Field Map — Priority Reading (excerpt)
+
+```
+1. Nanoscale Characterization of Interaction of Nucleosomes with H1 Linker Histone
+   Addresses: Nucleosome unwrapping kinetics and higher-order organization
+   Rationale: Directly measures H1-nucleosome interactions at single-molecule
+   resolution, bridging the gap between structural data and dynamic behavior.
+
+2. Explicit Ion Modeling Predicts Physicochemical Interactions for Chromatin Organization
+   Addresses: Histone modifications and phase separation nodes
+   Rationale: Provides quantitative framework for predicting how ionic conditions
+   and modifications alter chromatin compaction, connecting in vitro and in vivo.
+```
 
 ---
 
 ## 💡 Best Practices
 
-### ⚠️ Before You Start: Collection Requirements
+### For Find Hidden Papers
 
-LitGap works best with **well-curated, topic-focused collections**. Here's what you need to know:
+| Criteria | Recommendation |
+|----------|----------------|
+| Topic Focus | Single, well-defined topic |
+| Paper Count | 10-50 papers |
+| DOI Coverage | ≥80% with DOIs |
+| Time Range | Last 10-15 years |
 
-#### ✅ Ideal Collection Profile
+### For Map Your Research Field
 
-| Criteria | Recommendation | Why |
-|----------|----------------|-----|
-| **Topic Focus** | Single, well-defined topic | Papers should cite each other's references |
-| **Paper Count** | 10-50 papers | Enough data, reasonable analysis time |
-| **DOI Coverage** | ≥80% with DOIs | API requires DOIs to fetch citations |
-| **Time Range** | Last 10-15 years | Better citation data, more relevant |
-| **Paper Types** | Journal articles, conference papers | Reviews and books work too |
+- Works best with 15-60 papers on a focused topic
+- Run Find Hidden Papers first — the hidden papers list significantly improves Field Map quality
+- If the detected research area is too broad, edit it to be more specific
+- The Conceptual Map is a good starting point; run it alone first to check quality before adding Field Map
+- To improve output quality, use a stronger model (e.g. `claude-sonnet-4-6` instead of Haiku) by entering the model name during AI setup
+- The Field Map markdown is designed to be pasted into a Claude Project or AI assistant for interactive exploration
 
-#### ❌ What Doesn't Work Well
+### Using Field Map with Claude
 
-| Problem | Why | Solution |
-|---------|-----|----------|
-| **Mixed Topics** | Unrelated citations | Create separate collections per topic |
-| **<10 Papers** | Too few citation overlaps | Add more papers or combine related topics |
-| **>50 Papers** | API limits, slow analysis | LitGap will sample 50 papers automatically |
-| **Old Papers** | Fewer citations indexed | Focus on 2000+ if possible |
-| **No DOIs** | Cannot fetch citation data | Use Zotero's "Retrieve Metadata" feature |
-
----
-
-### 📏 Understanding the 50-Paper Limit
-
-**Why the limit?**
-- Semantic Scholar API has rate limits (~100 requests per 5 minutes)
-- Each paper takes ~1.5 seconds to process
-- 50 papers = ~2 minutes (reasonable wait time)
-- More papers = diminishing returns (overlapping citations)
-
-**What happens with >50 papers?**
-```
-Your collection: 100 papers with DOI
-
-LitGap automatically:
-  1. Randomly samples 50 papers
-  2. Shows you which papers are included
-  3. Analyzes those 50 papers
-  4. Generates recommendations
-
-Result: Still finds most important gaps!
-```
-
-**Best approach for large collections:**
-```
-Instead of: One 100-paper collection
-Do this:    Two 50-paper sub-collections
-  • "DNA Repair - Mechanisms" (50 papers)
-  • "DNA Repair - Applications" (50 papers)
-
-Benefit: 
-  ✓ Better topic focus
-  ✓ More targeted recommendations
-  ✓ Faster analysis
-```
+1. Run LitGap to generate `field-map_*.md`
+2. Paste the contents into a Claude conversation or Project
+3. Ask Claude to explain specific nodes, suggest reading order, or locate your own research question on the map
 
 ---
 
-### 🎯 Optimal Usage Scenarios
+## 🔧 How It Works
 
-#### Scenario 1: Literature Review (Perfect Use Case ⭐)
-
-```
-Starting point:
-  • 30 papers on "CRISPR gene editing"
-  • All published 2015-2024
-  • All have DOIs
-
-LitGap finds:
-  • 12 foundational papers you missed
-  • 3 cited by ≥5 of your papers
-  • Saves 2-3 hours of manual searching
-
-Recommendation: Run LitGap after collecting 20-30 papers
-```
-
-#### Scenario 2: Grant Writing
+### Find Hidden Papers
 
 ```
-Goal: Show comprehensive literature knowledge
-
-Process:
-  1. Collect 40-60 key papers in your field
-  2. Run LitGap
-  3. Add top 5-10 recommendations to your proposal
-  4. Your bibliography now includes foundational works
-
-Result: Reviewers see you know the field deeply
+Papers in collection
+  → Filter: Academic papers only, extract DOIs
+  → Query: Semantic Scholar API for each DOI
+  → Collect: Papers cited by your collection
+  → Remove: Papers already in your library
+  → Score: mention frequency + citation count + recency
+  → Output: Top recommendations as MD + HTML
 ```
 
-#### Scenario 3: PhD Thesis Preparation
+### Map Your Research Field
 
 ```
-Timeline:
-  • Year 1: Collect papers as you read (20-30)
-  • Year 2: Run LitGap quarterly, add recommendations
-  • Year 3: Final LitGap run before writing
-  
-Result: 
-  ✓ Comprehensive bibliography
-  ✓ No major gaps
-  ✓ Confident you've covered the field
-```
-
-#### Scenario 4: Field Overview (New Topic)
-
-```
-Situation: Starting research in new area
-
-Strategy:
-  1. Find 3-5 recent review papers
-  2. Add their key references (~15-25 papers)
-  3. Run LitGap
-  4. Read top recommendations first
-  5. Repeat process with expanded collection
-
-Result: Fast entry into new research area
+Find Hidden Papers report (missing papers list)
+  ↓
+Step A — Domain Knowledge Framework  (API call 1)
+  AI identifies 5-8 technical dimensions from your paper titles
+  ↓
+Step B — Conceptual Gap Analysis  (API call 2)
+  AI identifies 3-5 gaps + Stance Index for each missing paper
+  ↓
+  [if Field Map selected]
+Step FM-A — Core Questions Extraction  (API call 3)
+  AI reframes technical dimensions as research problems
+  ↓
+Step FM-B — Node Map Construction  (API call 4)
+  AI builds debate nodes, narrative, foundational papers, priority reading
+  ↓
+Reporter generates MD + HTML for each selected output
 ```
 
 ---
 
-### 📚 Collection Organization Tips
+## 🌐 API Costs
 
-#### Strategy A: Topic-Based Collections
+### Find Hidden Papers
+Free — uses Semantic Scholar API (no key required).
 
-```
-My_Research/
-├── CRISPR_Mechanisms (35 papers)
-├── CRISPR_Applications (42 papers)
-├── Gene_Therapy_Reviews (28 papers)
-└── Ethics_CRISPR (18 papers)
+### Map Your Research Field
 
-Analysis approach:
-  • Run LitGap on each collection separately
-  • Get topic-specific recommendations
-  • Merge important papers into main collection
-```
+Approximate costs using default models:
 
-#### Strategy B: Chronological Collections
+| Output | API Calls | Approx. Cost |
+|--------|-----------|--------------|
+| Conceptual Map only | 2 | ~$0.002 |
+| Conceptual Map + Field Map | 4 | ~$0.004 |
 
-```
-Literature_Review_2024/
-├── Phase1_SeedPapers (15 papers)
-├── Phase2_Expanded (40 papers)
-└── Phase3_Final (60 papers) → Sample to 50
-
-Analysis approach:
-  • Run LitGap after each phase
-  • Incrementally improve coverage
-  • Track which recommendations you add
-```
-
-#### Strategy C: Project-Based Collections
-
-```
-My_Projects/
-├── Project_Alpha (25 papers)
-├── Project_Beta (38 papers)
-└── Background_Reading (50 papers)
-
-Analysis approach:
-  • Each project gets targeted recommendations
-  • Background collection for general field knowledge
-  • Cross-reference between projects
-```
+Costs vary by provider and library size. Using a more powerful model (e.g. Claude Sonnet instead of Haiku) increases cost ~5-10×.
 
 ---
 
-### 🔍 Maximizing DOI Coverage
-
-**Problem**: Only 60% of your papers have DOIs  
-**Impact**: LitGap can only analyze those 60%  
-**Solution**: Batch-add DOIs before analysis
-
-#### Method 1: Zotero's Built-in Tool
-```
-1. Select papers without DOI
-2. Right-click → "Retrieve Metadata for PDF"
-3. Zotero auto-fills DOI if available
-```
-
-#### Method 2: DOI Manager Plugin
-```
-1. Install "DOI Manager" plugin
-2. Select collection
-3. Tools → DOI Manager → "Update DOIs"
-4. Batch processing in minutes
-```
-
-#### Method 3: Manual Addition (Last Resort)
-```
-For papers without DOI:
-  1. Search paper on publisher website
-  2. Copy DOI from paper page
-  3. Paste into Zotero DOI field
-  
-Note: Not all papers have DOIs (especially pre-2000)
-```
-
----
-
-### ⏱️ Time Expectations
-
-| Papers | With DOI | Analysis Time | Recommendations |
-|--------|----------|---------------|-----------------|
-| 10 | 8 | ~15 seconds | 2-5 |
-| 20 | 18 | ~30 seconds | 5-10 |
-| 30 | 25 | ~45 seconds | 8-15 |
-| 50 | 45 | ~90 seconds | 10-20 |
-| 100* | 50 (sampled) | ~90 seconds | 10-20 |
-
-*Auto-sampled to 50 papers
-
-**What affects time?**
-- **API delay**: 1.5s per paper (rate limit protection)
-- **Network speed**: Faster internet = slightly faster
-- **Paper popularity**: More citations = longer processing
-
-**Pro tip**: Start analysis before coffee break ☕
-
----
-
-### 🎓 Advanced Tips
-
-#### Tip 1: Iterative Analysis
-
-```
-Round 1: 20 papers → 8 recommendations → Add top 3
-Round 2: 23 papers → 7 new recommendations → Add top 2
-Round 3: 25 papers → 5 new recommendations → Done!
-
-Result: Comprehensive coverage with targeted additions
-```
-
-#### Tip 2: Compare Sub-Collections
-
-```
-Analysis:
-  • Run LitGap on "Methods" sub-collection
-  • Run LitGap on "Applications" sub-collection
-  • Compare recommendations
-  
-Find: Papers important in both = truly foundational
-```
-
-#### Tip 3: Track Recommendation Quality
-
-```
-Create "LitGap_Found" tag in Zotero:
-  1. Run LitGap analysis
-  2. Add recommended papers
-  3. Tag them "LitGap_Found"
-  4. Later: Review if they were actually useful
-  
-Result: Understand LitGap's accuracy for your field
-```
-
-#### Tip 4: Combine with Zotero Connector
-
-```
-Power workflow:
-  1. LitGap generates HTML report
-  2. Open HTML in browser
-  3. Click DOI link → Opens publisher page
-  4. Click Zotero Connector icon
-  5. Paper auto-imported!
-  
-Result: Add 10 papers in 2 minutes instead of 20
-```
-
----
-
-### ✅ Quick Checklist Before Analysis
-
-Before clicking "Find Hidden Papers", verify:
-
-- [ ] Collection is topic-focused (not mixed subjects)
-- [ ] At least 10-15 papers in collection
-- [ ] ≥80% of papers have DOIs
-- [ ] Most papers are from last 10-15 years
-- [ ] Papers are academic (not news articles/blogs)
-- [ ] You have 2-3 minutes to wait
-- [ ] Internet connection is stable
-
-**If all checked**: You'll get great results! 🎯  
-**If some missing**: Consider improving collection first
-
----
-
-## 🛠️ Configuration
-
-### Default Settings
-
-```javascript
-{
-  minYear: 2010,        // Only papers after 2010
-  topN: 10,             // Return top 10 recommendations
-  minMentions: 2,       // Cited by at least 2 of your papers
-  delay: 3000           // 3 seconds between API requests
-}
-```
-
-### Customization
-
-Currently settings are hardcoded. Future versions will add:
-- ⏳ User preferences dialog
-- ⏳ Adjustable filters
-- ⏳ Custom scoring weights
-
----
-
-## ⚠️ Limitations & Known Issues
-
-### Technical Limitations
-
-#### 1. API Rate Limits & 50-Paper Cap
-```
-Semantic Scholar API (free tier):
-  • ~100 requests per 5 minutes
-  • LitGap uses 3-second delay between requests
-  • Practical limit: 50 papers per analysis
-
-What happens with >50 papers?
-  → LitGap automatically samples 50 papers randomly
-  → Shows you which papers are included
-  → Analysis still effective (citation overlap)
-
-Workaround for large collections:
-  • Split into topic-specific sub-collections (recommended)
-  • Or accept random sampling (still finds most gaps)
-```
-
-#### 2. DOI Requirement
-```
-Papers without DOI cannot be analyzed
-
-Common cases:
-  • Pre-2000 publications
-  • Books and book chapters
-  • Technical reports
-  • Non-academic sources
-
-Impact: Older/non-standard literature underrepresented
-Workaround: Add DOIs manually via DOI Manager plugin
-```
-
-#### 3. Semantic Scholar Coverage
-```
-Excellent coverage:
-  ✓ Computer Science
-  ✓ Biomedical Sciences  
-  ✓ Physics, Chemistry
-
-Limited coverage:
-  ⚠️ Humanities
-  ⚠️ Some Social Sciences
-  ⚠️ Non-English papers
-
-Impact: Recommendations may miss field-specific works
-Workaround: Combine with traditional search methods
-```
-
----
-
-### Analytical Limitations
-
-#### What LitGap Can't Find
-
-**LitGap excels at**: Papers cited by multiple sources in your collection  
-**LitGap misses**:
-- **Brand new papers** (2024-2025, not yet widely cited)
-- **Niche papers** (important but rarely cited)
-- **Alternative approaches** (outside your citation network)
-- **Negative results** (rarely cited but valuable)
-
-**Recommendation**: Use LitGap + traditional search together
-
-#### When LitGap May Not Help
-
-| Scenario | Why | Better Approach |
-|----------|-----|-----------------|
-| **Very narrow topic** (<15 papers) | Too few citation overlaps | Broaden to related topics |
-| **Emerging field** (<2 years old) | Insufficient citations yet | Use preprint servers + alerts |
-| **Comprehensive collection** | Already complete! | Celebrate thoroughness 🎉 |
-| **Interdisciplinary mix** | Different citation cultures | Analyze each field separately |
-
----
-
-### Known Issues (v1.1.1)
-
-#### Issue 1: Blocking Progress Window 
-⏳ *Fix coming in v1.2.0*
-```
-Current: Progress window blocks Zotero during analysis
-Impact: Cannot work while LitGap runs
-
-Planned fix: Background processing + notifications
-```
-
-#### Issue 2: No Preference Memory  
-🔄 *Fix coming in v1.2.0*
-```
-Current: Asks for confirmation every time
-Impact: Repetitive for familiar collections
-
-Planned fix: "Don't ask me again" checkbox
-```
-
-#### Issue 3: No Analysis History  
-📊 *Planned for v2.0*
-```
-Current: No record of past analyses
-Impact: Can't track changes over time
-
-Planned: History view + comparison features
-```
-
----
-
-### Privacy & Data Usage
-
-#### What data is sent?
-```
-To Semantic Scholar API:
-  ✓ Paper DOIs only (public identifiers)
-  ✗ NO PDFs or paper content
-  ✗ NO personal information
-  ✗ NO Zotero username/email
-```
-
-#### What data is stored locally?
-```
-Zotero preferences (minimal):
-  • Usage count (for donation prompt)
-  • Collection-specific settings
-  • "Already donated" flag
-
-NOT stored:
-  • Analysis results
-  • Recommendation history
-  • Paper content
-```
-
-#### Network usage per analysis (30 papers):
-- API requests: 30
-- Data downloaded: ~500KB
-- Data uploaded: ~5KB
-- Time: ~45 seconds
+## ⚠️ Limitations
+
+### Find Hidden Papers
+- Requires internet connection and Semantic Scholar API access
+- Papers need DOIs for citation lookup
+- Citation data quality depends on Semantic Scholar coverage (better for English papers, post-2000)
+- Maximum ~50 papers per analysis (API rate limits)
+
+### Map Your Research Field
+- Requires an AI API key and internet connection
+- AI output quality depends on model and library size — smaller, more focused libraries produce better maps
+- `[AI Inferred — verify]` positions should be verified against actual papers before treating as ground truth
+- Field Map node structure varies between runs — re-running on the same library may produce different node names or link structures
+- SVG graph layout depends on link direction in AI output; if the AI generates ambiguous links, layout may not perfectly reflect upstream/downstream relationships
 
 ---
 
 ## 🤔 FAQ
 
 <details>
-<summary><strong>Why do I need DOIs?</strong></summary>
+<summary><strong>Which AI provider should I use?</strong></summary>
 
-DOIs (Digital Object Identifiers) are used to query the Semantic Scholar API. Without DOIs, we can't fetch citation data. Most modern papers (post-2000) have DOIs.
+For most users: **Anthropic Claude Haiku** (fast, cheap, good quality) or **OpenAI GPT-4o-mini** (similar). For better Field Map quality, use Claude Sonnet or GPT-4o — enter the model name during setup.
 
-**Solution**: Add DOIs using Zotero's "Retrieve Metadata" feature or DOI Manager plugin.
+Users in mainland China: use **DeepSeek** (`custom` provider, base URL `https://api.deepseek.com/v1`, model `deepseek-chat`).
+</details>
+
+<details>
+<summary><strong>Why do I need a litgap report to run Map Your Research Field?</strong></summary>
+
+The missing papers list from Find Hidden Papers populates the suggested reading, foundational papers, and priority reading sections of the maps. Without it, the AI has to infer gaps from titles alone. You can load an existing `litgap_*.md` from a previous run — you don't need to re-run Find Hidden Papers every time.
+</details>
+
+<details>
+<summary><strong>How do I use the Field Map with Obsidian?</strong></summary>
+
+Copy the Mermaid block at the bottom of `field-map_*.md` into an Obsidian note. Obsidian renders Mermaid diagrams natively. You can also paste the entire field map markdown as a reference note for interactive AI conversations.
+</details>
+
+<details>
+<summary><strong>What does [AI Inferred — verify] mean?</strong></summary>
+
+The AI assigned a position to a paper based on its training knowledge, not by reading your actual library. These assignments are suggestions — verify them against the papers. You can manually change the annotation to `[Confirmed]` in the markdown file after verifying.
+</details>
+
+<details>
+<summary><strong>Why do I need DOIs for Find Hidden Papers?</strong></summary>
+
+DOIs are used to query the Semantic Scholar API. Without DOIs, citation data cannot be fetched. Most modern papers (post-2000) have DOIs. Use Zotero's "Retrieve Metadata" feature or the DOI Manager plugin to batch-add DOIs.
 </details>
 
 <details>
 <summary><strong>How long does analysis take?</strong></summary>
 
-- 3 papers: ~10 seconds
-- 20 papers: ~1 minute
-- 50 papers: ~2-3 minutes
+**Find Hidden Papers**: ~1-3 minutes for 20-50 papers.
 
-**Rate limit**: ~1.5 seconds per paper (Semantic Scholar API limit)
-</details>
-
-<details>
-<summary><strong>What if no recommendations are found?</strong></summary>
-
-Possible reasons:
-1. **Excellent coverage**: Your library is already comprehensive! 🎉
-2. **Too few papers**: Try analyzing 20+ papers
-3. **Strict filters**: Papers need to be cited by ≥2 of your papers
-
-**Try**: Lower the `minMentions` to 1 (contact developer for help)
-</details>
-
-<details>
-<summary><strong>Can I use it offline?</strong></summary>
-
-No. LitGap requires internet connection to:
-- Query Semantic Scholar API
-- Fetch citation data
-
-**Tip**: Run analysis when online, then review reports offline.
-</details>
-
-<details>
-<summary><strong>What about non-English papers?</strong></summary>
-
-Semantic Scholar has good coverage for English papers. Non-English papers may have:
-- Fewer citations indexed
-- Less complete data
-
-**Result**: May not appear in recommendations even if relevant.
-</details>
-
-<details>
-<summary><strong>Why is the API so slow?</strong></summary>
-
-Semantic Scholar has rate limits (~100 requests per 5 minutes). We add delays (3 seconds) to avoid hitting the limit and getting blocked.
-
-**Patience is key!** ⏳ The results are worth it.
+**Map Your Research Field**: ~30-90 seconds total. Each of the 2-4 AI calls takes ~5-30 seconds depending on provider.
 </details>
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Plugin doesn't appear
+### "Map Your Research Field" fails with parse error
+The AI returned a response that could not be parsed. Try running again — this is usually transient. If it fails repeatedly, try a different AI provider or check your API key.
+
+### Plugin doesn't appear in right-click menu
 ```
-Solution:
-1. Tools → Add-ons → Check if "LitGap" is listed
-2. If not: Reinstall from .xpi file
+1. Tools → Add-ons → Check if "LitGap" is listed and enabled
+2. If not listed: Reinstall from .xpi file
 3. Restart Zotero completely (close all windows)
 ```
 
 ### "No papers with DOI found"
 ```
-Solution:
 1. Check papers have DOI field filled
 2. Use Zotero's "Retrieve Metadata" feature
 3. Or install "DOI Manager" plugin to batch-add DOIs
@@ -871,181 +396,72 @@ Solution:
 
 ### Analysis fails or hangs
 ```
-Solution:
 1. Check internet connection
-2. Check Debug Console (Help → Debug Output Logging)
-3. Look for error messages
-4. Report issue with console log
+2. Help → Debug Output Logging → look for [KGMMain] error messages
+3. Report issue with console log on GitHub
 ```
 
 ### HTML report doesn't open
 ```
-Solution:
-1. Right-click .html file → Open With → Browser
-2. Or drag .html file into browser window
-3. Chrome, Firefox, Safari all supported
-```
-
-### Links don't work
-```
-Solution:
-1. Make sure papers have DOI
-2. Some DOIs may be behind paywalls
-3. Try Semantic Scholar or Google Scholar links instead
+Right-click .html file → Open With → Browser
+The file is self-contained — no internet required after generation
 ```
 
 ---
 
 ## 📚 Background & Motivation
 
-### The Problem: Unknown Unknowns
+LitGap was developed during PhD research in biophysics to solve two problems:
 
-As researchers, we face four types of knowledge:
+**Unknown unknowns** — papers you don't know you're missing. Citation network analysis finds them automatically.
 
-```
-┌─────────────────┬─────────────────┐
-│  Known Knowns   │  Known Unknowns │
-│ (what you know) │ (you know gaps) │
-├─────────────────┼─────────────────┤
-│Unknown Unknowns │ Unknown Knowns  │
-│ ← LitGap helps! │ (hidden skills) │
-└─────────────────┴─────────────────┘
-```
-
-**Unknown unknowns** are the hardest: Papers you don't know you're missing.
-
-### The Solution: Citation Network Analysis
-
-**Key insight**: If a paper is cited by multiple papers you've read, it's probably important.
-
-**LitGap automates this discovery process.**
-
-### Academic Context
-
-This tool was developed during PhD research in biophysics to:
-- Identify foundational papers in DNA mechanics
-- Complete literature review efficiently
-- Discover cross-disciplinary connections
-
-**Result**: Found 15+ important papers I had missed, significantly improved my literature review.
+**No map of the field** — entering a new sub-field means reading many papers before understanding what is contested and what is settled. The Field Map provides this orientation before deep reading, identifying the core debates and which papers take which positions.
 
 ---
 
 ## 🤝 Contributing
 
-### Reporting Issues
-
-Found a bug? Have a suggestion?
-
-1. Check [existing issues](https://github.com/Yu-TingSun/litgap/issues)
-2. Open a new issue with:
-   - Zotero version
-   - LitGap version
-   - Error message (from Debug Console)
-   - Steps to reproduce
-
-### Feature Requests
-
-Ideas for improvements? Open an issue with tag `enhancement`.
-
-**Planned features**:
-- ⏳ User preferences dialog
-- ⏳ Background analysis (non-blocking)
-- ⏳ Export to BibTeX
-- ⏳ Integration with other reference managers
-
-### Code Contributions
-
-Pull requests welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests if applicable
-4. Submit PR with clear description
+Found a bug or have a suggestion? Open an issue on [GitHub](https://github.com/Yu-TingSun/litgap/issues) with:
+- Zotero version
+- LitGap version
+- Error message (from Help → Debug Output Logging)
+- Steps to reproduce
 
 ---
 
 ## 💖 Support This Project
 
-LitGap is **free and open source**. If it helps your research:
+LitGap is **free and open source**.
 
-### Support via Ko-fi
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/yutingsun)
 
-**Why support?**
-- Supports continued development
-- Enables new features
-- Helps maintain compatibility with Zotero updates
-
-
-### Other Ways to Help
 - ⭐ **Star this repository**
 - 📢 **Share with colleagues**
-- 📝 **Write about it** (blog, social media)
-- 🐛 **Report bugs** to improve quality
-- 💡 **Suggest features** for future versions
-
-### Sponsorship Funds Usage
-All sponsorship funds support:
-- **Education**: Research tools development
-- **Research platforms**: Open-source academic tools
-- **Community**: Free resources for researchers
-
-*Thank you for helping make research more efficient!* 🙏
+- 🐛 **Report bugs**
+- 💡 **Suggest features**
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-**TL;DR**: Free to use, modify, and distribute. No warranties provided.
+MIT License — see [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 🔗 Links
 
-- **GitHub**: [github.com//Yu-TingSun/litgap](https://github.com/Yu-TingSun/litgap)
+- **GitHub**: [github.com/Yu-TingSun/litgap](https://github.com/Yu-TingSun/litgap)
 - **Issues**: [Report bugs or request features](https://github.com/Yu-TingSun/litgap/issues)
 - **Releases**: [Download latest version](https://github.com/Yu-TingSun/litgap/releases)
 - **Developer**: [Sun Yuting](https://yutingsun.netlify.app/)
 
 ---
 
-## 📮 Contact
-
-**Developer**: Sun Yuting  
-**Website**: [yutingsun.netlify.app](https://yutingsun.netlify.app/)  
-**GitHub**: [@Yu-TingSun](https://github.com/Yu-TingSun)
-
-**Questions or feedback?**  
-Open an issue on GitHub or reach out via website contact form.
-
----
-
 ## 🙏 Acknowledgments
 
-### Built With
-- [Semantic Scholar API](https://www.semanticscholar.org/product/api) - Citation data
-- [Zotero](https://www.zotero.org/) - Reference management platform
-
-### Inspired By
-- Research on knowledge organization and discovery
-- Personal pain points during PhD literature review
-- The "unknown unknowns" framework
-
-### Thanks To
-- Zotero development team for excellent documentation
-- Semantic Scholar for free API access
-- Early testers and feedback providers
-
----
-
-## 📊 Project Stats
-
-![GitHub stars](https://img.shields.io/github/stars/Yu-TingSun/litgap?style=social)
-![GitHub forks](https://img.shields.io/github/forks/Yu-TingSun/litgap?style=social)
-![GitHub issues](https://img.shields.io/github/issues/Yu-TingSun/litgap)
-![GitHub license](https://img.shields.io/github/license/Yu-TingSun/litgap)
+- [Semantic Scholar API](https://www.semanticscholar.org/product/api) — citation data
+- [Zotero](https://www.zotero.org/) — reference management platform
+- Anthropic, OpenAI, Google — AI providers
 
 ---
 

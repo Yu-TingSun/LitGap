@@ -1,7 +1,18 @@
+
 {
   "addons": {
     "litgap@sunyuting.dev": {
       "updates": [
+        {
+          "version": "3.0.0",
+          "update_link": "https://github.com/Yu-TingSun/LitGap/releases/download/v3.0.0/LitGap-v3.0.0.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0.0",
+              "strict_max_version": "8.*"
+            }
+          }
+        },
         {
           "version": "2.0.1",
           "update_link": "https://github.com/Yu-TingSun/LitGap/releases/download/v2.0.1/LitGap-v2.0.1.xpi",
