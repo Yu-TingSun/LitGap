@@ -15,7 +15,7 @@
  *
  * CHANGELOG v3.1.0:
  *   - buildFieldMapPrompt: added foundationalPapers and priorityReading to JSON schema
- *     foundationalPapers: per-node list of key papers with one-sentence explanation
+ *     foundationalPapers: per-node list, maximum 1 paper with one-sentence explanation
  *     priorityReading:    top 2-3 papers to read based on largest gaps, with rationale
  *   - buildGapPrompt: added Stance Index block + stance annotation per gap
  *   - All output enforced in English
@@ -289,7 +289,7 @@ var PromptBuilder = {
       '              Emerging=too new for debate, Gap=not covered by library',
       '  coreDispute One sentence: the central tension.',
       '  positionA / positionB',
-      '              text: 2-3 sentences per position.',
+      '              text: 1 sentence per position.',
       '              source: "user_library" if from Stance Index [User Library] entries,',
       '                      "ai_inferred"  if from training knowledge or [AI Inferred] entries.',
       '                      Never set "confirmed" — reserved for user.',
@@ -311,7 +311,7 @@ var PromptBuilder = {
       '',
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       'OUTPUT 3 — foundationalPapers',
-      'For each node, list 2-4 papers that are foundational to understanding that node.',
+      'For each node, list 1-3 papers that are foundational to understanding that node.',
       'These can come from the researcher\'s library, the LitGap recommended list,',
       'or your training knowledge (mark source accordingly).',
       'For each paper give one sentence explaining why it matters for that node.',
@@ -325,7 +325,7 @@ var PromptBuilder = {
       'Based on the nodes with status Gap or the largest library gaps,',
       'recommend 2-3 papers the researcher should read first.',
       'Prefer papers from the LitGap recommended list when available.',
-      'For each paper give 2-3 sentences explaining:',
+      'For each paper give 1-2 sentences explaining:',
       '  - which node or gap it addresses',
       '  - what the researcher will gain by reading it',
       '  - why it should be read before other papers on the list',
@@ -346,8 +346,8 @@ var PromptBuilder = {
       '      "name": "Node Name Here",',
       '      "status": "Open",',
       '      "coreDispute": "One sentence.",',
-      '      "positionA": { "text": "2-3 sentences.", "source": "user_library" },',
-      '      "positionB": { "text": "2-3 sentences.", "source": "ai_inferred" },',
+      '      "positionA": { "text": "1 sentence.", "source": "user_library" },',
+      '      "positionB": { "text": "1 sentences.", "source": "ai_inferred" },',
       '      "links": [ { "target": "node_2", "type": "downstream", "label": "brief label" } ],',
       '      "gaps": [ { "type": "library", "text": "One sentence." } ],',
       '      "suggestedReading": ["Paper title from LitGap list"]',

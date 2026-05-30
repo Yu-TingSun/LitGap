@@ -4,6 +4,16 @@
     "litgap@sunyuting.dev": {
       "updates": [
         {
+          "version": "3.1.0",
+          "update_link": "https://github.com/Yu-TingSun/LitGap/releases/download/v3.1.0/litgap-3.1.0.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0.0",
+              "strict_max_version": "99.*"
+            }
+          }
+        },
+        {
           "version": "3.0.0",
           "update_link": "https://github.com/Yu-TingSun/LitGap/releases/download/v3.0.0/LitGap-v3.0.0.xpi",
           "applications": {

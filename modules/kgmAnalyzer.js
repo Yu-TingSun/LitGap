@@ -317,7 +317,7 @@ var KGMAnalyzer = {
     );
 
     Zotero.debug('KGMAnalyzer: FM-B — calling AI');
-    const fieldMapRaw = await aiClient.complete(fieldMapPrompt);
+    const fieldMapRaw = await aiClient.complete(fieldMapPrompt, '', 8192);
 
     const fieldMapData = this._parseFullJsonResponse(fieldMapRaw);
     if (!fieldMapData || !Array.isArray(fieldMapData.nodes) || fieldMapData.nodes.length === 0) {

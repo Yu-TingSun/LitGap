@@ -48,7 +48,7 @@ var AIClient = {
   // ─── Max tokens for responses ───────────────────────────────────────────────
   // Keep reasonably large so full framework + gap analysis fit in one response.
 
-  MAX_TOKENS: 4096,
+  MAX_TOKENS: 8192,
 
   // ─── Preference key prefix ──────────────────────────────────────────────────
   // v2.0.1: Must use full 'extensions.zotero.litgap.*' namespace for Zotero 8.
@@ -94,8 +94,8 @@ var AIClient = {
        * @param {string} [systemPrompt] - Optional system/context instruction
        * @returns {Promise<string>} AI response text
        */
-      complete: function(prompt, systemPrompt) {
-        return self._dispatch(_provider, _apiKey, _model, _customBaseUrl, prompt, systemPrompt || '');
+      complete: function(prompt, systemPrompt, maxTokens) {
+        return self._dispatch(_provider, _apiKey, _model, _customBaseUrl, prompt, systemPrompt || '', maxTokens);
       },
 
       /**
@@ -179,19 +179,20 @@ var AIClient = {
    *
    * @private
    */
-  _dispatch: async function(provider, apiKey, model, customBaseUrl, prompt, systemPrompt) {
+  _dispatch: async function(provider, apiKey, model, customBaseUrl, prompt, systemPrompt, maxTokens) {
+  const tokens = maxTokens || this.MAX_TOKENS;
     Zotero.debug(`AIClient: Sending request to provider="${provider}" model="${model}"`);
 
     switch (provider) {
       case 'anthropic':
-        return this._callAnthropic(apiKey, model, prompt, systemPrompt);
+        return this._callAnthropic(apiKey, model, prompt, systemPrompt, tokens);
       case 'openai':
-        return this._callOpenAI('https://api.openai.com', apiKey, model, prompt, systemPrompt);
+        return this._callOpenAI('https://api.openai.com', apiKey, model, prompt, systemPrompt, tokens);
       case 'google':
-        return this._callGoogle(apiKey, model, prompt, systemPrompt);
+        return this._callGoogle(apiKey, model, prompt, systemPrompt, tokens);
       case 'custom':
         if (!customBaseUrl) throw new Error('customBaseUrl is required for custom provider');
-        return this._callOpenAI(customBaseUrl, apiKey, model, prompt, systemPrompt);
+        return this._callOpenAI(customBaseUrl, apiKey, model, prompt, systemPrompt, tokens);
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
@@ -205,12 +206,12 @@ var AIClient = {
    *
    * @private
    */
-  _callAnthropic: async function(apiKey, model, prompt, systemPrompt) {
+  _callAnthropic: async function(apiKey, model, prompt, systemPrompt, tokens) {
     const url = 'https://api.anthropic.com/v1/messages';
 
     const body = {
       model:      model,
-      max_tokens: this.MAX_TOKENS,
+      max_tokens: tokens,
       messages: [
         { role: 'user', content: prompt }
       ]
@@ -244,7 +245,7 @@ var AIClient = {
    *
    * @private
    */
-  _callOpenAI: async function(baseUrl, apiKey, model, prompt, systemPrompt) {
+  _callOpenAI: async function(baseUrl, apiKey, model, prompt, systemPrompt, tokens) {
     const url = `${baseUrl}/v1/chat/completions`;
 
     const messages = [];
@@ -255,7 +256,7 @@ var AIClient = {
 
     const body = {
       model:      model,
-      max_tokens: this.MAX_TOKENS,
+      max_tokens: tokens,
       messages:   messages
     };
 
@@ -280,7 +281,7 @@ var AIClient = {
    *
    * @private
    */
-  _callGoogle: async function(apiKey, model, prompt, systemPrompt) {
+  _callGoogle: async function(apiKey, model, prompt, systemPrompt, tokens) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const contents = [];
@@ -306,7 +307,7 @@ var AIClient = {
     const body = {
       contents:         contents,
       generationConfig: {
-        maxOutputTokens: this.MAX_TOKENS
+        maxOutputTokens: tokens,
       }
     };
 
