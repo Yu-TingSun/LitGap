@@ -3,8 +3,28 @@
  * Coordinates Parser -> API -> Analyzer
  *
  * @module main
- * @version 3.0.0
- *
+ * @version 3.2.0
+ * 
+ * CHANGELOG v3.2.0 (2026-10-02):
+ *   - Changed: Data source is OpenAlex (api.js v2.0.0). Progress text now
+ *     "Fetching references".
+ *   - Changed: MIN_MENTIONS constant shared by API.fetchCitations() and
+ *     Analyzer.findGaps(); minYear disabled (null).
+ *   - Fixed: "Your library is well-covered!" no longer shown when reference
+ *     data is incomplete — shows "Analysis Incomplete" with the reason.
+ *   - Added: Completion dialog reports papers that returned no reference data.
+ *   - Changed: Continuation dialog uses the "Map Your Research Field" label.
+ * 
+ * CHANGELOG v3.0.2:
+ *   - Changed: Data source is OpenAlex (api.js v2.0.0); MIN_MENTIONS shared by
+ *     API and Analyzer; progress text "Fetching references"
+ *   - Fixed: "Your library is well-covered!" no longer shown when data is
+ *     incomplete — shows "Analysis Incomplete" with the reason instead
+ *  
+ * CHANGELOG v3.0.1:
+ *   - Changed: findGaps minYear 2010 → null (references mode, api.js v1.5.0)
+ *   - Added: Completion dialog shows number of papers that failed to fetch*
+ * 
  * CHANGELOG v2.0.2:
  *   - Added: After Find Hidden Papers saves successfully, prompt user to
  *     continue to KGM analysis. Uses confirmEx so user can choose Yes / No.
@@ -84,6 +104,11 @@ var LitGapMain = {
       Zotero.debug("\nLitGap Main: Step 2 - Fetching citations from Semantic Scholar");
 
       // Change B: progressCallback now updates floating progress UI
+
+      const MIN_MENTIONS = 2;
+
+      Zotero.debug("\nLitGap Main: Step 2 - Fetching references from OpenAlex");
+
       const citationData = await LitGap.API.fetchCitations(
         papersWithDOI,
         (current, total, title) => {
@@ -99,7 +124,8 @@ var LitGapMain = {
           if (current % 5 === 0 || current === total) {
             Zotero.debug(`LitGap: Progress [${current}/${total}] ${title.substring(0, 30)}...`);
           }
-        }
+        },
+        { minMentions: MIN_MENTIONS }
       );
 
       if (!citationData || !citationData.all_citations) {
@@ -112,20 +138,39 @@ var LitGapMain = {
       Zotero.debug("\nLitGap Main: Step 3 - Analyzing knowledge gaps");
 
       const recommendations = LitGap.Analyzer.findGaps(citationData, {
-        minYear: 2010,
+        minYear: null,   // v3.0.1: disabled (references mode); keep param for future settings
         topN: 10,
-        minMentions: 2
+        minMentions: MIN_MENTIONS
       });
 
       // Check if we have recommendations
-      if (!recommendations || recommendations.length === 0) {
-        // Change C: hide before early return
+            if (!recommendations || recommendations.length === 0) {
         if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
-        this._showNotification(
-          "Analysis Complete",
-          "No knowledge gaps found.\n\nYour library is well-covered!",
-          "info"
-        );
+        const s = citationData.stats || {};
+        const failedCount = (s.papers_failed || 0) + (s.papers_not_found || 0);
+        const failedNote = failedCount > 0
+        ? `\u26A0\uFE0F ${failedCount} paper(s) returned no reference data ` +
+          `(see Debug Output for details).\n\n`
+        : '';
+        const noData = (s.papers_failed || 0) + (s.papers_not_found || 0);
+        if (noData > 0 || s.rate_limit_tripped) {
+          this._showNotification(
+            "Analysis Incomplete",
+            `No shared references found, but ${noData} of ${s.user_papers_count} paper(s) ` +
+            `returned no reference data.\n\n` +
+            (s.rate_limit_tripped
+              ? "OpenAlex rate limit was reached. Try again later or add a free OpenAlex API key.\n\n"
+              : "") +
+            "Results may be incomplete. See Debug Output for details.",
+            "info"
+          );
+        } else {
+          this._showNotification(
+            "Analysis Complete",
+            "No knowledge gaps found.\n\nYour library is well-covered!",
+            "info"
+          );
+        }
         return false;
       }
 
@@ -169,6 +214,11 @@ var LitGapMain = {
       // Step 6: Show completion summary and confirm save
       // Change C: hide before showing the save dialog
       if (LitGap.ProgressUI) LitGap.ProgressUI.hide();
+      const failedCount = (citationData.stats && citationData.stats.papers_failed) || 0;
+      const failedNote = failedCount > 0
+        ? `\u26A0\uFE0F ${failedCount} paper(s) could not be fetched from Semantic Scholar ` +
+          `(see Debug Output for details).\n\n`
+        : '';
 
       const ps = Services.prompt;
       const confirmed = ps.confirm(
@@ -208,12 +258,12 @@ var LitGapMain = {
           const ps = Services.prompt;
           const continueToKGM = ps.confirm(
             null,
-            'LitGap \u2014 Continue to KGM?',
+            'LitGap \u2014 Map Your Research Field?',
             'Report saved successfully! \u2705\n\n' +
             'Would you like to continue to\n' +
-            'Knowledge Gap Mapping (KGM) analysis now?\n\n' +
+            'Map Your Research Field??\n\n' +
             '(You can also run it later via right-click \u2192\n' +
-            '"Analyze Knowledge Gaps (KGM)")'
+            '"Map Your Research Field?")'
           );
 
           if (continueToKGM) {

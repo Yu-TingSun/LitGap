@@ -3,7 +3,10 @@
  * Find knowledge gaps by analyzing citation patterns
  * 
  * @module analyzer
- * @version 2.0.0
+ * @version 2.0.1
+ * 
+ * v2.0.1 - minYear defaults to null (disabled) for references mode;
+ *          papers without a year are no longer dropped.
  * 
  * Ported from: find_gaps.py
  * 
@@ -21,14 +24,14 @@ var Analyzer = {
    * 
    * @param {Object} citationData - Citation data from API module
    * @param {Object} options - Analysis options
-   * @param {number} options.minYear - Minimum publication year (default: 2010)
+   * @param {number} options.minYear - Minimum publication year (default: null)
    * @param {number} options.topN - Number of recommendations to return (default: 10)
    * @param {number} options.minMentions - Minimum mention count (default: 2)
    * @returns {Array} Sorted array of recommendations with scores
    */
   findGaps: function(citationData, options = {}) {
     const {
-      minYear = 2010,
+      minYear = null, // v2.0.1: null = no year filter (references mode)
       topN = 10,
       minMentions = 2
     } = options;
@@ -49,12 +52,15 @@ var Analyzer = {
     Zotero.debug(`After removing existing papers: ${candidates.length}`);
     
     // Filter 2: Year threshold
-    candidates = candidates.filter(c => {
-      if (!c.year) return false;
-      const year = parseInt(c.year);
-      return !isNaN(year) && year >= minYear;
-    });
-    Zotero.debug(`After year filter (>=${minYear}): ${candidates.length}`);
+    if (minYear) {
+      candidates = candidates.filter(c => {
+        const year = parseInt(c.year);
+        return isNaN(year) || year >= minYear;
+      });
+      Zotero.debug(`After year filter (>=${minYear}): ${candidates.length}`);
+    } else {
+      Zotero.debug("Year filter disabled");
+    }
     
     // Filter 3: Minimum mentions
     candidates = candidates.filter(c => 

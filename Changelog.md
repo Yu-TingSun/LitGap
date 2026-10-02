@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.2.0] - 2026-10-02
+
+### Changed
+- **Find Hidden Papers now uses OpenAlex instead of Semantic Scholar.** Semantic Scholar returned empty reference lists for many papers (e.g. some Blood and BMC articles) and its shared public pool was heavily rate-limited, which led to "no gaps found" even for well-connected libraries. OpenAlex provides more complete reference data, and single-record lookups are free, so no API key is needed.
+- Find Hidden Papers now analyzes **references** (papers your library cites) instead of citations (papers citing your library), matching the original design: papers cited by several of your papers are the shared foundations of your topic.
+- Removed the publication-year filter (previously 2010 and later). Older foundational papers are now included, and the "📚 Early influential work" label can mark them.
+- Recommendation reports link to OpenAlex instead of Semantic Scholar. DOI links now appear for recommended papers.
+- Removed the "Score: X/100" line from reports. The score has no fixed maximum, so "/100" was misleading. Ranking order is unchanged.
+- Library overview shows "References analyzed", "Papers without reference data", and "Data source".
+
+### Fixed
+- **Find Hidden Papers was extremely slow on Zotero 10.** Zotero's HTTP client silently retried rate-limited (HTTP 429) requests for up to an hour per request, on top of LitGap's own retries. LitGap now disables Zotero's internal retries and uses its own bounded retry: it honors `Retry-After`, uses exponential backoff, and makes at most 4 attempts per lookup.
+- Zotero 10 compatibility: replaced the removed `ZoteroPane.getSelectedCollection()` with `getSelectedCollections()`. If multiple collections are selected, LitGap asks you to select one.
+- A paper listed twice in one reference list is no longer counted twice.
+- Papers without a publication year are no longer dropped from recommendations.
+- "Your library is well-covered!" is no longer shown when reference data is incomplete. LitGap now shows "Analysis Incomplete" with the reason.
+- Papers that fail to fetch are recorded and reported, instead of being silently skipped.
+
+### Technical
+- `api.js` v2.0.0: OpenAlex client using singleton lookups (`/works/doi:{doi}` and `/works/{id}`). Shared references are counted locally, and metadata is fetched only for candidates mentioned by 2 or more papers. Also adds DOI normalization and a circuit breaker that stops after 3 consecutive rate-limited lookups. An optional API key is read from `extensions.zotero.litgap.openalexApiKey` (no UI yet). The output format is unchanged; `paperId` is now an OpenAlex ID.
+- `analyzer.js` v2.0.1: `minYear` defaults to `null` (filter disabled; parameter kept).
+- `reporter.js` v1.3.0: OpenAlex links, null-safe title and citation count, score line removed. The `#### N. Title` and `- Mentioned by:` lines are unchanged, so `kgmAnalyzer.parseLitGapReport` still works.
+- `main.js` v3.2.0: a shared `MIN_MENTIONS` constant, the incomplete-data message, and the label "Map Your Research Field" in the continuation dialog.
+- `overlay.js` v3.2.0: the `_getSingleSelectedCollection()` helper and label clean-up.
+
+---
+
 ## [3.0.0] - 2026-03-17
 
 ### Fixed

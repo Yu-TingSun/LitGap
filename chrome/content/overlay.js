@@ -2,8 +2,15 @@
  * LitGap - UI Overlay (Zotero 7/8)
  * Pure JavaScript UI integration with smart sampling
  *
- * @version 3.0.0
- *
+ * @version 3.2.0
+ * 
+ * CHANGELOG v3.2.0 (2026-10-02):
+ *   - Fixed: Zotero 10 removed ZoteroPane.getSelectedCollection().
+ *     Added _getSingleSelectedCollection() using getSelectedCollections(),
+ *     with fallback for Zotero 7/8. Alerts if 0 or >1 collections selected.
+ *   - Changed: Remaining "KGM" labels in user-facing text renamed to
+ *     "Map Your Research Field".
+ * 
  * CHANGELOG v3.0.0:
  *   - Changed: "Analyze Knowledge Gaps (KGM)" menu label renamed to
  *     "Map Your Research Field"
@@ -104,6 +111,38 @@ var LitGapOverlay = {
     }
   },
 
+
+  /**
+   * Get exactly one selected collection (Zotero 10 multi-select safe).
+   * Zotero 10 removed getSelectedCollection(); use getSelectedCollections().
+   * Falls back to the singular getter on older Zotero versions.
+   *
+   * @param {string} title - Dialog title for alerts
+   * @returns {Zotero.Collection|null}
+   */
+  _getSingleSelectedCollection: function(title = "LitGap") {
+    const pane = Zotero.getActiveZoteroPane();
+    if (!pane) return null;
+
+    const collections = (typeof pane.getSelectedCollections === 'function')
+      ? (pane.getSelectedCollections() || [])
+      : [pane.getSelectedCollection()].filter(Boolean);
+
+    if (collections.length === 0) {
+      Services.prompt.alert(null, title, "Please select a collection first.");
+      return null;
+    }
+    if (collections.length > 1) {
+      Services.prompt.alert(null, title,
+        "Multiple collections are selected.\n\n" +
+        "LitGap analyzes one collection at a time.\n" +
+        "Please select a single collection and try again.");
+      return null;
+    }
+    return collections[0];
+  },
+
+
   /**
    * Insert all LitGap menu items into the collection context menu.
    * Safe to call multiple times — guarded by sentinel ID check.
@@ -144,20 +183,18 @@ var LitGapOverlay = {
     this.menuItem.addEventListener('command', () => this.onAnalyzeClick());
     collectionMenu.appendChild(this.menuItem);
 
-    // ── 3. Map Your Research Field) ─────────────────────────────────────
+    // ── 3. Map Your Research Field ─────────────────────────────────────
     const kgmMenuItem = doc.createXULElement('menuitem');
     kgmMenuItem.id = 'litgap-kgm-menuitem';
     kgmMenuItem.setAttribute('label', 'Map Your Research Field');
     kgmMenuItem.addEventListener('command', () => {
-      const collection = Zotero.getActiveZoteroPane().getSelectedCollection();
-      if (!collection) {
-        Services.prompt.alert(null, "LitGap KGM", "Please select a collection first.");
-        return;
-      }
+      const collection = this._getSingleSelectedCollection("LitGap");
+      if (!collection) return;
+
       if (typeof KGMMain === 'undefined') {
         Services.prompt.alert(
           null,
-          "LitGap KGM",
+          "LitGap",
           "KGM module is not loaded.\n\nPlease reload the plugin and try again."
         );
         return;
@@ -186,17 +223,9 @@ var LitGapOverlay = {
     Zotero.debug("[LitGap Overlay] Button clicked!");
 
     try {
-      const zoteroPane = Zotero.getActiveZoteroPane();
-      const collection = zoteroPane.getSelectedCollection();
-
+      const collection = this._getSingleSelectedCollection("LitGap");
       if (!collection) {
-        const ps = Services.prompt;
-        ps.alert(
-          null,
-          "LitGap",
-          "Please select a collection first."
-        );
-        Zotero.debug("[LitGap Overlay] No collection selected");
+        Zotero.debug("[LitGap Overlay] No single collection selected");
         return;
       }
 
@@ -394,7 +423,7 @@ var LitGapOverlay = {
         "What would you like to reset?\n\n" +
         "Reset AI Key\n" +
         "  Clear saved API key, provider and model.\n" +
-        "  You will be prompted to enter them again on next KGM analysis.\n\n" +
+        "  You will be prompted to enter them again on next Map Your Research Field run.\n\n" +
         "Reset Confirmations\n" +
         "  Clear all \"Don't ask me again\" choices.\n" +
         "  Zotero will ask for confirmation before each collection analysis.",
@@ -425,7 +454,7 @@ var LitGapOverlay = {
         ps.alert(null, "LitGap",
           "\u2713 AI key cleared.\n\n" +
           "You will be prompted to enter your API key\n" +
-          "on the next KGM analysis.\n\n" +
+          "on the next Map Your Research Field analysis.\n\n" +
           "Tip: If the right-click menu disappears after restarting Zotero,\n" +
           "go to Tools > Add-ons and Disable then Enable LitGap."
         );
